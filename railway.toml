@@ -2,8 +2,8 @@
 # Railway UI can override these; they document the intended build/start for this monorepo.
 
 [build]
-builder = "NIXPACKS"
-buildCommand = "npm ci && npm run build"
+builder = "RAILPACK"
+buildCommand = "npm run build"
 
 [deploy]
 startCommand = "npm start"
