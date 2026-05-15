@@ -1,0 +1,21 @@
+# Copy to /etc/systemd/system/theoove-app.service
+#   sudo cp deploy/examples/theoove-app.service /etc/systemd/system/theoove-app.service
+# Edit User= and paths if needed, then:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now theoove-app
+
+[Unit]
+Description=Theoove fintech app (Node API + static web)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=deploy
+WorkingDirectory=/opt/theoove-app
+EnvironmentFile=/opt/theoove-app/.env
+ExecStart=/usr/bin/node /opt/theoove-app/server/dist/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

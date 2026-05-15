@@ -1,0 +1,6 @@
+# Install Caddy on Ubuntu, then copy this to /etc/caddy/Caddyfile (or include from snippets).
+# Replace theoove.com with your domain. DNS A record must point to this server first.
+
+theoove.com, www.theoove.com {
+	reverse_proxy 127.0.0.1:4000
+}

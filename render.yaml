@@ -1,0 +1,29 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# New → Blueprint → connect repo. Edit `region` / `plan` to match your account.
+
+databases:
+  - name: theoove-postgres
+    databaseName: theoove
+    user: theoove
+    region: oregon
+
+services:
+  - type: web
+    name: theoove-app
+    runtime: node
+    region: oregon
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: theoove-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_ORIGIN
+        sync: false

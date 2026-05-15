@@ -1,0 +1,11 @@
+# https://docs.railway.com/reference/config-as-code
+# Railway UI can override these; they document the intended build/start for this monorepo.
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "npm ci && npm run build"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"
