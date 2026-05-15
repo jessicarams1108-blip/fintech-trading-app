@@ -186,8 +186,7 @@ async function verifyPostgresWithRetry(): Promise<void> {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(
-        `[Startup] Postgres attempt ${attempt}/${maxAttempts} failed — check DATABASE_URL`,
-        message,
+        `[Startup] Postgres attempt ${attempt}/${maxAttempts} failed — check DATABASE_URL: ${message}`,
       );
       if (attempt === maxAttempts) {
         process.exit(1);
