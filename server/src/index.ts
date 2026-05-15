@@ -32,8 +32,6 @@ import { settingsRouter } from "./routes/settings.js";
 import { getUsdPrices } from "./lib/market.js";
 import { marketRouter } from "./routes/market.js";
 
-const PORT = env.PORT;
-
 /** Built Vite app (`npm run build -w web`), resolved from `server/dist/index.js`. */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = path.resolve(__dirname, "../../web/dist");
@@ -171,11 +169,17 @@ app.use(
   },
 );
 
-/** Bind IPv4 explicitly — avoids Windows/Vite proxy issues where `localhost` hits ::1 but the server is IPv4-only. */
-server.listen(PORT, "0.0.0.0", () => {
+/** Bind on 0.0.0.0; Railway sets PORT — local dev falls back to 5000. */
+const listenPortRaw = process.env.PORT;
+const parsed = Number.parseInt(String(listenPortRaw ?? ""), 10);
+const listenPort =
+  listenPortRaw !== undefined && listenPortRaw !== "" && Number.isFinite(parsed) && parsed > 0 ? parsed : 5000;
+
+server.listen(listenPort, "0.0.0.0", () => {
+  console.log(`[Startup] Listening on 0.0.0.0:${listenPort} (process.env.PORT=${listenPortRaw ?? "unset"} → using ${listenPort})`);
   console.log(
     serveWeb
-      ? `API + Socket.IO + web (static ${WEB_DIST}) on 0.0.0.0:${PORT}`
-      : `API + Socket.IO on 0.0.0.0:${PORT} (no web dist at ${WEB_DIST} — run npm run build -w web)`,
+      ? `API + Socket.IO + web (static ${WEB_DIST}) on 0.0.0.0:${listenPort}`
+      : `API + Socket.IO on 0.0.0.0:${listenPort} (no web dist at ${WEB_DIST} — run npm run build -w web)`,
   );
 });
