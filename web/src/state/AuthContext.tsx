@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { apiFetch } from "@/lib/apiBase";
 
 export type AuthUser = {
   id: string;
@@ -46,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const res = await fetch("/api/auth/me", {
+        const res = await apiFetch("/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     let res: Response;
     try {
-      res = await fetch("/api/auth/login", {
+      res = await apiFetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),
@@ -89,7 +90,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     }
     if (!res.ok) {
-      const payload = await res.json().catch(() => ({}));
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        throw new Error(
+          API_ORIGIN
+            ? `Sign-in failed (${res.status}). The API may be waking up — wait a minute and try again.`
+            : "This site is not connected to the API. In Vercel, set VITE_API_URL to https://fintech-trading-app.onrender.com and redeploy.",
+        );
+      }
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(payload?.error ?? "Login failed");
     }
     const body = (await res.json()) as { token: string; user: AuthUser };
@@ -108,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
     setToken(null);
     setUser(null);
-    void fetch("/api/auth/logout", {
+    void apiFetch("/api/auth/logout", {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });

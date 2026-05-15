@@ -38,7 +38,8 @@ export function LoginPage() {
       await login(email, password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const msg = err instanceof Error ? err.message : "Login failed";
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -87,7 +88,23 @@ export function LoginPage() {
             </button>
           </div>
 
-          {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+          {error ? (
+            <div className="mt-3 space-y-2">
+              <p className="text-sm text-red-600">{error}</p>
+              {/verify your email/i.test(error) ? (
+                <p className="text-sm text-slate-600">
+                  <Link
+                    to="/verify/request"
+                    state={{ prefilledEmail: email.trim() || undefined }}
+                    className="font-semibold text-oove-blue hover:underline"
+                  >
+                    Finish email verification
+                  </Link>{" "}
+                  — on live site you may see a 6-digit code on screen (no email yet).
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <button
             type="submit"
