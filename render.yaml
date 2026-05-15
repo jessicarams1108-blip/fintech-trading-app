@@ -25,5 +25,8 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
+      # Browser origins (Vercel frontend). Add your Render URL after first deploy if needed for testing.
       - key: APP_ORIGIN
+        value: https://www.theoove.com,https://theoove.com
+      - key: ADMIN_PRIMARY_EMAIL
         sync: false
