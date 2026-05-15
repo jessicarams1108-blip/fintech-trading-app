@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/apiBase";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/state/AuthContext";
@@ -45,7 +46,7 @@ type AdminUserRow = {
 };
 
 async function adminFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
+  const res = await apiFetch(path, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...(init?.headers as object) },
   });
@@ -133,7 +134,7 @@ export function AdminConsolePage() {
   const pricePreview = useQuery({
     queryKey: ["market", "price", symUpper],
     queryFn: async () => {
-      const r = await fetch(`/api/market/price?symbol=${encodeURIComponent(symUpper)}`);
+      const r = await apiFetch(`/api/market/price?symbol=${encodeURIComponent(symUpper)}`);
       const b = (await r.json()) as { error?: string; data?: { priceUsd: number } };
       if (!r.ok) throw new Error(typeof b.error === "string" ? b.error : "Price unavailable");
       return b.data!.priceUsd;

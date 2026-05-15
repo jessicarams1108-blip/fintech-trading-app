@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/apiBase";
 import { useCallback, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -47,7 +48,7 @@ function strengthLabel(s: 0 | 1 | 2 | 3): string {
 
 async function checkUsernameAvailable(username: string): Promise<boolean> {
   try {
-    const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
+    const res = await apiFetch(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
     if (!res.ok) return false;
     const data = (await res.json()) as { available?: boolean };
     return Boolean(data.available);
@@ -122,7 +123,7 @@ export function SignupWizard() {
     if (!form.termsAccepted || registering) return;
     setRegistering(true);
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await apiFetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

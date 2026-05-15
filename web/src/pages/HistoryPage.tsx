@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/apiBase";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -18,7 +19,7 @@ type Row = {
 const HISTORY_TYPES = ["all", "deposit", "withdrawal", "borrow", "borrow_request", "transfer", "ledger"] as const;
 
 async function authFetch<T>(path: string, token: string): Promise<T> {
-  const res = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await apiFetch(path, { headers: { Authorization: `Bearer ${token}` } });
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (!res.ok) throw new Error((body as { error?: string }).error ?? res.statusText);
   return body as T;

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PendingDepositDto } from "@/types";
+import { apiFetch } from "@/lib/apiBase";
 import { useAuth } from "@/state/AuthContext";
 
 type Props = {
@@ -22,7 +23,7 @@ export function AdminDepositReviewTable({ refreshToken = 0, onQueuesChanged }: P
     setLoadError(null);
     let res: Response;
     try {
-      res = await fetch("/api/admin/deposits/pending", {
+      res = await apiFetch("/api/admin/deposits/pending", {
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch {
@@ -65,7 +66,7 @@ export function AdminDepositReviewTable({ refreshToken = 0, onQueuesChanged }: P
         body = { reason };
       }
 
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

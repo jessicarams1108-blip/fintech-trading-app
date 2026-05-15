@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { apiFetch } from "@/lib/apiBase";
+import { API_ORIGIN, apiFetch } from "@/lib/apiBase";
 
 export type AuthUser = {
   id: string;

@@ -1,3 +1,5 @@
+import { apiFetch } from "@/lib/apiBase";
+
 type Capabilities = { data?: { depositProofUploads?: boolean } };
 type PresignBody = {
   data?: { uploadUrl: string; proofKey: string; headers?: Record<string, string> };
@@ -9,11 +11,11 @@ type PresignBody = {
  * Otherwise returns null so callers can fall back to filename-only proof (dev / legacy).
  */
 export async function uploadDepositProofIfConfigured(token: string, file: File): Promise<string | null> {
-  const capRes = await fetch("/api/deposit/capabilities");
+  const capRes = await apiFetch("/api/deposit/capabilities");
   const cap = (await capRes.json().catch(() => ({}))) as Capabilities;
   if (!cap.data?.depositProofUploads) return null;
 
-  const pres = await fetch("/api/deposit/presign", {
+  const pres = await apiFetch("/api/deposit/presign", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -35,7 +37,7 @@ export async function uploadDepositProofIfConfigured(token: string, file: File):
     throw new Error("Invalid presign response from server");
   }
 
-  const put = await fetch(uploadUrl, { method: "PUT", headers, body: file });
+  const put = await apiFetch(uploadUrl, { method: "PUT", headers, body: file });
   if (!put.ok) {
     const hint = await put.text().catch(() => "");
     throw new Error(`Proof upload failed (${put.status}) ${hint.slice(0, 160)}`.trim());

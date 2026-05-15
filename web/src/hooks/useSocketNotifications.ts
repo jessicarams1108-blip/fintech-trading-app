@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { io, type Socket } from "socket.io-client";
+import { socketOrigin } from "@/lib/apiBase";
 import { useAuth } from "@/state/AuthContext";
 
 export type DepositConfirmedPayload = {
@@ -28,7 +29,7 @@ export function useDepositConfirmedSocket(
     let socket: Socket | null = null;
     try {
       // Default: polling first, then upgrade to WebSocket. Forcing ["websocket"] only breaks behind Vite’s dev proxy.
-      socket = io(window.location.origin, {
+      socket = io(socketOrigin(), {
         path: "/socket.io",
         auth: { token },
         reconnectionAttempts: 6,

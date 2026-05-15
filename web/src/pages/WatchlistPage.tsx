@@ -1,10 +1,11 @@
+import { apiFetch } from "@/lib/apiBase";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
 
 async function authFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
+  const res = await apiFetch(path, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...(init?.headers as object) },
   });

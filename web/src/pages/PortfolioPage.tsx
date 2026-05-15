@@ -6,6 +6,7 @@ import { useAuth } from "@/state/AuthContext";
 import { formatAssetQuantity, formatBtcEquivalent, formatPortfolioTotalUsd } from "@/lib/portfolioFormat";
 import { MaskedValue, useBalanceVisibility } from "@/state/BalanceVisibilityContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
+import { apiFetch } from "@/lib/apiBase";
 
 type Summary = { totalValueUsd: number; change24hPct: number; allocation: { symbol: string; valueUsd: number }[] };
 type Holding = {
@@ -20,14 +21,14 @@ type Holding = {
 type TopRow = { symbol: string; priceUsd: number };
 
 async function fetchTopPrices(): Promise<TopRow[]> {
-  const res = await fetch("/api/market/top-prices");
+  const res = await apiFetch("/api/market/top-prices");
   const body = (await res.json().catch(() => ({}))) as { data?: TopRow[] };
   if (!res.ok) throw new Error("Could not load market prices");
   return body.data ?? [];
 }
 
 async function fetchJson<T>(path: string, token: string): Promise<T> {
-  const res = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await apiFetch(path, { headers: { Authorization: `Bearer ${token}` } });
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (!res.ok) throw new Error((body as { error?: string }).error ?? res.statusText);
   return body as T;

@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/apiBase";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { DepositActivityDto } from "@/types";
@@ -27,7 +28,7 @@ export function useDepositActivity(token: string | null, limit: number, reloadTo
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/deposit/my-activity?limit=${limit}`, {
+      const res = await apiFetch(`/api/deposit/my-activity?limit=${limit}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = (await res.json().catch(() => null)) as {

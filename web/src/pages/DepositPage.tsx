@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/apiBase";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
@@ -37,7 +38,7 @@ export function DepositPage() {
     async function loadConfig() {
       setConfig(null);
       try {
-        const res = await fetch(`/api/deposit/config?asset=${encodeURIComponent(asset)}`);
+        const res = await apiFetch(`/api/deposit/config?asset=${encodeURIComponent(asset)}`);
         if (!res.ok) {
           const message = await res.text();
           throw new Error(message);
@@ -119,7 +120,7 @@ export function DepositPage() {
         else screenshotFileName = proofFile.name;
       }
 
-      const res = await fetch("/api/deposit/submit", {
+      const res = await apiFetch("/api/deposit/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

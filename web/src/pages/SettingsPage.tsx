@@ -5,11 +5,12 @@ import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeTog
 import { useToast } from "@/state/ToastContext";
 import { useTheme } from "@/state/ThemeContext";
 import clsx from "clsx";
+import { apiFetch } from "@/lib/apiBase";
 
 type Tab = "profile" | "security" | "prefs";
 
 async function authFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
+  const res = await apiFetch(path, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...(init?.headers as object) },
   });

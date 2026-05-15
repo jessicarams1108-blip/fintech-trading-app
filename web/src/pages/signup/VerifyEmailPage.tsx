@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/apiBase";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/state/AuthContext";
@@ -48,7 +49,7 @@ export function VerifyEmailPage() {
   const userId = typeof window !== "undefined" ? localStorage.getItem(PENDING_USER_ID_KEY) : null;
 
   useEffect(() => {
-    void fetch("/api/auth/public-config")
+    void apiFetch("/api/auth/public-config")
       .then((r) => r.json())
       .then((b: { data?: { emailDelivery?: string } }) => {
         const d = b.data?.emailDelivery;
@@ -115,7 +116,7 @@ export function VerifyEmailPage() {
   const resend = useCallback(async () => {
     if (!userId) return;
     try {
-      const res = await fetch("/api/auth/resend-otp", {
+      const res = await apiFetch("/api/auth/resend-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
@@ -145,7 +146,7 @@ export function VerifyEmailPage() {
     if (!userId || !codeOk) return;
     setSubmitting(true);
     try {
-      const res = await fetch("/api/auth/verify", {
+      const res = await apiFetch("/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, code: codeStr }),

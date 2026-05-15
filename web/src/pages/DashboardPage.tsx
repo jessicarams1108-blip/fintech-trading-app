@@ -6,6 +6,7 @@ import type { DepositActivityDto } from "@/types";
 import { useToast } from "@/state/ToastContext";
 import { DepositActivityPanel } from "@/components/DepositActivity";
 import { DashboardPortfolioBlock } from "@/components/DashboardPortfolioBlock";
+import { apiFetch } from "@/lib/apiBase";
 
 const MARKETS = [
   { asset: "USDC", supplyApy: "4.12%", borrowApr: "5.8%", desc: "Stablecoin liquidity" },
@@ -45,7 +46,7 @@ export function DashboardPage() {
     if (!token) return;
     setLoadErr(null);
     try {
-      const res = await fetch("/api/liquidity/summary", {
+      const res = await apiFetch("/api/liquidity/summary", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;

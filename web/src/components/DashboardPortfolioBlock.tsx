@@ -10,6 +10,7 @@ import { uploadDepositProofIfConfigured } from "@/lib/depositProofUpload";
 import { formatAssetQuantity, formatBtcEquivalent, formatPortfolioTotalUsd } from "@/lib/portfolioFormat";
 import { MaskedValue, useBalanceVisibility } from "@/state/BalanceVisibilityContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
+import { apiFetch } from "@/lib/apiBase";
 
 const MIN_DEPOSIT_USD = 100;
 const DASHBOARD_ASSETS: AssetSymbol[] = ["BTC", "ETH", "USDT"];
@@ -27,7 +28,7 @@ type Holding = {
 type TopRow = { symbol: string; priceUsd: number };
 
 async function authFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
+  const res = await apiFetch(path, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...(init?.headers as object) },
   });
@@ -37,7 +38,7 @@ async function authFetch<T>(path: string, token: string, init?: RequestInit): Pr
 }
 
 async function fetchTopPrices(): Promise<TopRow[]> {
-  const res = await fetch("/api/market/top-prices");
+  const res = await apiFetch("/api/market/top-prices");
   const body = (await res.json().catch(() => ({}))) as { data?: TopRow[] };
   if (!res.ok) throw new Error("Could not load market prices");
   return body.data ?? [];
@@ -107,7 +108,7 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
         else screenshotFileName = proofFile.name;
       }
 
-      const res = await fetch("/api/deposit/submit", {
+      const res = await apiFetch("/api/deposit/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

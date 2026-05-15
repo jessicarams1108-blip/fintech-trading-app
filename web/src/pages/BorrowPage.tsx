@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/apiBase";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -27,7 +28,7 @@ type Power = {
 };
 
 async function authFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
+  const res = await apiFetch(path, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...(init?.headers as object) },
   });

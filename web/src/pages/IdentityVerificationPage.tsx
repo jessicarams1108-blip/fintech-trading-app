@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/apiBase";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/state/AuthContext";
@@ -30,8 +31,8 @@ export function IdentityVerificationPage() {
     setLoading(true);
     try {
       const [kycRes, idRes] = await Promise.all([
-        fetch("/api/kyc/status", { headers: { Authorization: `Bearer ${token}` } }),
-        fetch("/api/identity/status", { headers: { Authorization: `Bearer ${token}` } }),
+        apiFetch("/api/kyc/status", { headers: { Authorization: `Bearer ${token}` } }),
+        apiFetch("/api/identity/status", { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const kycBody = (await kycRes.json().catch(() => ({}))) as KycStatusResponse & { error?: string };
       if (!kycRes.ok) {
@@ -60,7 +61,7 @@ export function IdentityVerificationPage() {
     if (!token) return;
     setSubmitting(true);
     try {
-      const res = await fetch("/api/kyc/submit", {
+      const res = await apiFetch("/api/kyc/submit", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: "{}",
@@ -83,7 +84,7 @@ export function IdentityVerificationPage() {
     if (!token) return;
     setSubmitting(true);
     try {
-      const res = await fetch("/api/kyc/demo-verify", {
+      const res = await apiFetch("/api/kyc/demo-verify", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ tier }),

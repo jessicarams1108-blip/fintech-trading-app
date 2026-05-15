@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/apiBase";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -45,7 +46,7 @@ export function RequestVerificationCodePage() {
     if (!emailOk || submitting) return;
     setSubmitting(true);
     try {
-      const res = await fetch("/api/auth/send-verification-code", {
+      const res = await apiFetch("/api/auth/send-verification-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
