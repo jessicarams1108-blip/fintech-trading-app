@@ -1,14 +1,25 @@
 import pg from "pg";
 import { env } from "../env.js";
 
+/** Hostname from a postgres URL (no port). */
+function pgHost(connectionString: string): string {
+  try {
+    return new URL(connectionString.replace(/^postgresql:/i, "http:")).hostname;
+  } catch {
+    return "";
+  }
+}
+
 /**
  * TLS for public cloud Postgres URLs only.
- * Railway private URLs (`*.railway.internal`) must NOT use SSL.
+ * Private network hosts must NOT use SSL (Railway internal, Render `dpg-*` hostname).
  */
 function poolSslOption(): { rejectUnauthorized: boolean } | undefined {
   const url = env.DATABASE_URL;
-  if (/\.railway\.internal/i.test(url)) return undefined;
-  if (/\.render\.com/i.test(url) || /\.rlwy\.net/i.test(url) || process.env.RENDER === "true") {
+  const host = pgHost(url);
+  if (/\.railway\.internal$/i.test(host)) return undefined;
+  if (/^dpg-[a-z0-9-]+$/i.test(host)) return undefined;
+  if (/\.render\.com$/i.test(host) || /\.rlwy\.net$/i.test(host)) {
     return { rejectUnauthorized: false };
   }
   return undefined;

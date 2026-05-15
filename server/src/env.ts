@@ -25,7 +25,12 @@ function emptyToUndef(val: unknown): unknown {
  * Validates required secrets at startup to avoid half-configured deployments.
  */
 const schema = z.object({
-  DATABASE_URL: z.string().min(12, "DATABASE_URL must be set to a Postgres connection string"),
+  DATABASE_URL: z
+    .string()
+    .min(12, "DATABASE_URL must be set to a Postgres connection string")
+    .refine((v) => /^postgres(ql)?:\/\//i.test(v), {
+      message: "DATABASE_URL must start with postgresql:// (not a website URL)",
+    }),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   /** Case-insensitive allowlist gate for MVP admin tooling. Prefer role column longer term. */
   ADMIN_PRIMARY_EMAIL: z.string().email().optional(),
