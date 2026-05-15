@@ -4,8 +4,16 @@ import dotenv from "dotenv";
 import { z } from "zod";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
-dotenv.config({ path: path.resolve(__dirname, "../.env"), override: true });
+
+/** On Render/Railway, use platform env only — never let committed `.env` override DATABASE_URL. */
+const isHostedRuntime = Boolean(
+  process.env.RENDER || process.env.RENDER_SERVICE_ID || process.env.RAILWAY_ENVIRONMENT,
+);
+
+if (!isHostedRuntime) {
+  dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+  dotenv.config({ path: path.resolve(__dirname, "../.env"), override: true });
+}
 
 function boolFromEnv(val: unknown, defaultVal: boolean): boolean {
   if (val === undefined || val === "") return defaultVal;
