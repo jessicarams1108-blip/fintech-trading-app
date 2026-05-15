@@ -13,7 +13,7 @@ import http from "node:http";
 import { Server as SocketIOServer } from "socket.io";
 import jwt from "jsonwebtoken";
 import { env } from "./env.js";
-import { pool } from "./db/index.js";
+import { pgHost, pool } from "./db/index.js";
 import {
   createAdminDepositRoutes,
   createPublicDepositRoutes,
@@ -174,23 +174,39 @@ server.listen(listenPort, "0.0.0.0", () => {
   );
 });
 
-/** Retry Postgres in background so /health can pass while DB connects. */
+function formatConnectError(err: unknown): string {
+  if (err instanceof AggregateError) {
+    const parts = err.errors.map((e) => formatConnectError(e)).filter(Boolean);
+    return parts.length > 0 ? parts.join("; ") : err.message || "AggregateError";
+  }
+  if (err && typeof err === "object") {
+    const e = err as { message?: string; code?: string };
+    if (e.message?.trim()) return e.message;
+    if (e.code) return `code=${e.code}`;
+  }
+  return String(err);
+}
+
+/** Retry Postgres in background; do not exit — avoids Render crash loop while DATABASE_URL is fixed. */
 async function verifyPostgresWithRetry(): Promise<void> {
-  const maxAttempts = 30;
+  const dbHost = pgHost(env.DATABASE_URL);
+  const looksInternal = /^dpg-[a-z0-9-]+$/i.test(dbHost);
+  console.log(
+    `[Startup] DATABASE_URL host=${dbHost || "(unparseable)"} internal=${looksInternal} — use Render **Internal** URL from fintech-trading-db`,
+  );
+
   const delayMs = 2_000;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  let attempt = 0;
+  for (;;) {
+    attempt += 1;
     try {
       await pool.query("SELECT NOW() AS now");
       console.log("[Startup] Postgres connection OK");
       return;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
       console.error(
-        `[Startup] Postgres attempt ${attempt}/${maxAttempts} failed — check DATABASE_URL: ${message}`,
+        `[Startup] Postgres attempt ${attempt} failed (host=${dbHost}): ${formatConnectError(err)}`,
       );
-      if (attempt === maxAttempts) {
-        process.exit(1);
-      }
       await new Promise((r) => setTimeout(r, delayMs));
     }
   }
