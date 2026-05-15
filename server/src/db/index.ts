@@ -1,10 +1,14 @@
 import pg from "pg";
 import { env } from "../env.js";
 
-/** Render-hosted Postgres (and many cloud URLs) expect TLS from Node clients. */
+/**
+ * TLS for public cloud Postgres URLs only.
+ * Railway private URLs (`*.railway.internal`) must NOT use SSL.
+ */
 function poolSslOption(): { rejectUnauthorized: boolean } | undefined {
   const url = env.DATABASE_URL;
-  if (/\.render\.com/i.test(url) || process.env.RENDER === "true") {
+  if (/\.railway\.internal/i.test(url)) return undefined;
+  if (/\.render\.com/i.test(url) || /\.rlwy\.net/i.test(url) || process.env.RENDER === "true") {
     return { rejectUnauthorized: false };
   }
   return undefined;

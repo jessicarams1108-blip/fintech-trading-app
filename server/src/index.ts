@@ -96,16 +96,6 @@ setInterval(() => {
   })();
 }, 25_000);
 
-pool
-  .query("SELECT NOW() AS now")
-  .then(() => {
-    console.log("[Startup] Postgres connection OK");
-  })
-  .catch((err: Error) => {
-    console.error("[Startup] Cannot reach Postgres — check DATABASE_URL", err.message);
-    process.exit(1);
-  });
-
 app.use(helmet());
 app.use(cors({ origin: corsOrigins, credentials: true }));
 app.use(express.json({ limit: "512kb" }));
@@ -183,3 +173,27 @@ server.listen(listenPort, "0.0.0.0", () => {
       : `API + Socket.IO on 0.0.0.0:${listenPort} (no web dist at ${WEB_DIST} — run npm run build -w web)`,
   );
 });
+
+/** Retry Postgres in background so /health can pass while DB connects. */
+async function verifyPostgresWithRetry(): Promise<void> {
+  const maxAttempts = 30;
+  const delayMs = 2_000;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await pool.query("SELECT NOW() AS now");
+      console.log("[Startup] Postgres connection OK");
+      return;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[Startup] Postgres attempt ${attempt}/${maxAttempts} failed — check DATABASE_URL`,
+        message,
+      );
+      if (attempt === maxAttempts) {
+        process.exit(1);
+      }
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+}
+void verifyPostgresWithRetry();
