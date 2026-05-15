@@ -9,8 +9,13 @@ import dotenv from "dotenv";
 import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
-dotenv.config({ path: path.resolve(__dirname, "../.env"), override: true });
+const isHostedRuntime = Boolean(
+  process.env.RENDER || process.env.RENDER_SERVICE_ID || process.env.RAILWAY_ENVIRONMENT,
+);
+if (!isHostedRuntime) {
+  dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+  dotenv.config({ path: path.resolve(__dirname, "../.env"), override: true });
+}
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -25,7 +30,25 @@ if (!fs.existsSync(schemaPath)) {
 }
 
 const sql = fs.readFileSync(schemaPath, "utf8");
-const client = new pg.Client({ connectionString: databaseUrl });
+
+function clientSslOption(url) {
+  try {
+    const host = new URL(url.replace(/^postgresql:/i, "http:")).hostname;
+    if (/^dpg-[a-z0-9-]+$/i.test(host)) return undefined;
+    if (/\.render\.com$/i.test(host) || /\.rlwy\.net$/i.test(host)) {
+      return { rejectUnauthorized: false };
+    }
+  } catch {
+    /* ignore */
+  }
+  return undefined;
+}
+
+const ssl = clientSslOption(databaseUrl);
+const client = new pg.Client({
+  connectionString: databaseUrl,
+  ...(ssl !== undefined ? { ssl } : {}),
+});
 await client.connect();
 try {
   await client.query(sql);

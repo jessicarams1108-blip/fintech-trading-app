@@ -12,7 +12,8 @@
     "dev:web": "npm run dev -w web",
     "dev:server": "npm run dev -w server",
     "build": "npm run build -w web && npm run build -w server",
-    "start": "npm run start -w server",
+    "build:vercel": "npm run build -w web",
+    "start": "node server/scripts/apply-schema-if-needed.mjs && npm run start -w server",
     "preview:web": "npm run preview -w web"
   },
   "engines": {
