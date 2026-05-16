@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import clsx from "clsx";
 import { useAuth } from "@/state/AuthContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
 import { useToast } from "@/state/ToastContext";
 import { useTheme } from "@/state/ThemeContext";
-import clsx from "clsx";
+import { usePreferences, type DisplayCurrency, type DisplayLanguage } from "@/state/PreferencesContext";
 import { apiFetch } from "@/lib/apiBase";
+import { changePassword, fetchProfile, patchProfile } from "@/lib/settingsApi";
 
-type Tab = "profile" | "security" | "prefs";
+type Tab = "account" | "prefs" | "security";
 
 async function authFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const res = await apiFetch(path, {
@@ -19,54 +21,146 @@ async function authFetch<T>(path: string, token: string, init?: RequestInit): Pr
   return body as T;
 }
 
+function SkeletonLine({ className }: { className?: string }) {
+  return <div className={clsx("animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800", className)} />;
+}
+
+function SettingsCard({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <section
+      className={clsx(
+        "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900",
+        className,
+      )}
+    >
+      {children}
+    </section>
+  );
+}
+
+function fieldClass() {
+  return "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-oove-blue focus:ring-2 focus:ring-oove-blue/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
+}
+
+function labelClass() {
+  return "text-sm font-medium text-slate-800 dark:text-slate-200";
+}
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === "dark";
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={isDark}
+      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className={clsx(
+        "relative inline-flex h-9 w-[4.25rem] shrink-0 items-center rounded-full border transition-colors duration-300 ease-out",
+        isDark ? "border-slate-600 bg-slate-800" : "border-slate-200 bg-slate-100",
+      )}
+    >
+      <span
+        className={clsx(
+          "absolute left-0.5 top-0.5 h-7 w-7 rounded-full bg-white shadow-md transition-transform duration-300 ease-out dark:bg-slate-200",
+          isDark ? "translate-x-[2.15rem]" : "translate-x-0",
+        )}
+      />
+      <span className="pointer-events-none flex w-full justify-between px-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+        <span className={clsx(!isDark && "text-slate-700")}>☀</span>
+        <span className={clsx(isDark && "text-slate-300")}>☾</span>
+      </span>
+    </button>
+  );
+}
+
 export function SettingsPage() {
   const { token, user } = useAuth();
   const { showToast } = useToast();
   const { theme, setTheme } = useTheme();
+  const { currency, setCurrency, language, setLanguage } = usePreferences();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<Tab>("profile");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [tab, setTab] = useState<Tab>("account");
+
+  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
+  const [profileSavedFlash, setProfileSavedFlash] = useState(false);
+
   const [curPw, setCurPw] = useState("");
   const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwSavedFlash, setPwSavedFlash] = useState(false);
+
+  const profileQ = useQuery({
+    queryKey: ["settings", "profile", token],
+    enabled: !!token,
+    queryFn: () => fetchProfile(token!),
+  });
+
+  useEffect(() => {
+    if (!profileQ.data) return;
+    setFullName(profileQ.data.fullName);
+    setUsername(profileQ.data.username ?? "");
+  }, [profileQ.data]);
 
   const sessions = useQuery({
     queryKey: ["settings", "sessions", token],
     enabled: !!token && tab === "security",
-    queryFn: () => authFetch<{ data: { id: string; user_agent: string | null; created_at: string; revoked_at: string | null }[] }>("/api/settings/sessions", token!),
+    queryFn: () =>
+      authFetch<{ data: { id: string; user_agent: string | null; created_at: string; revoked_at: string | null }[] }>(
+        "/api/settings/sessions",
+        token!,
+      ),
   });
 
   const saveProfile = useMutation({
     mutationFn: async () => {
-      if (!token) return;
-      await authFetch("/api/settings/profile", token, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName }),
+      if (!token) throw new Error("Sign in required");
+      const trimmedUser = username.trim();
+      if (trimmedUser.length > 0 && trimmedUser.length < 3) {
+        throw new Error("Username must be at least 3 characters");
+      }
+      if (trimmedUser.length > 0 && !/^[a-zA-Z0-9_]+$/.test(trimmedUser)) {
+        throw new Error("Username may only contain letters, numbers, and underscores");
+      }
+      return patchProfile(token, {
+        fullName: fullName.trim(),
+        ...(trimmedUser.length > 0 ? { username: trimmedUser } : {}),
       });
     },
-    onSuccess: () => {
-      showToast("Profile saved");
-      void qc.invalidateQueries({ queryKey: ["settings"] });
+    onSuccess: (data) => {
+      setFullName(data.fullName);
+      setUsername(data.username ?? "");
+      setProfileSavedFlash(true);
+      window.setTimeout(() => setProfileSavedFlash(false), 2500);
+      showToast("Profile saved. A confirmation email was sent if mail is configured.", "success");
+      void qc.invalidateQueries({ queryKey: ["settings", "profile"] });
     },
-    onError: (e: Error) => showToast(e.message),
+    onError: (e: Error) => showToast(e.message, "error"),
   });
 
   const changePw = useMutation({
     mutationFn: async () => {
-      if (!token) return;
-      await authFetch("/api/settings/change-password", token, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword: curPw, newPassword: newPw }),
+      if (!token) throw new Error("Sign in required");
+      if (newPw.length < 8) throw new Error("New password must be at least 8 characters");
+      if (newPw !== confirmPw) throw new Error("New password and confirmation do not match");
+      await changePassword(token, {
+        currentPassword: curPw,
+        newPassword: newPw,
+        confirmPassword: confirmPw,
       });
     },
     onSuccess: () => {
-      showToast("Password updated");
       setCurPw("");
       setNewPw("");
+      setConfirmPw("");
+      setPwSavedFlash(true);
+      window.setTimeout(() => setPwSavedFlash(false), 2500);
+      showToast("Password updated. Check your email for a security notice.", "success");
     },
-    onError: (e: Error) => showToast(e.message),
+    onError: (e: Error) => showToast(e.message, "error"),
   });
 
   const revoke = useMutation({
@@ -78,128 +172,336 @@ export function SettingsPage() {
         body: JSON.stringify({ sessionId }),
       });
     },
-    onSuccess: () => void sessions.refetch(),
-    onError: (e: Error) => showToast(e.message),
+    onSuccess: () => {
+      showToast("Session revoked", "success");
+      void sessions.refetch();
+    },
+    onError: (e: Error) => showToast(e.message, "error"),
   });
+
+  const displayEmail = profileQ.data?.email ?? user?.email ?? "—";
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "account", label: "Account" },
+    { key: "prefs", label: "Preferences" },
+    { key: "security", label: "Security" },
+  ];
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-3xl font-semibold text-slate-900">Settings</h1>
-      <p className="text-slate-600">Signed in as {user?.email}</p>
+      <div className="space-y-1">
+        <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">Settings</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400">Manage your account, password, and app preferences.</p>
+      </div>
 
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
-        {(
-          [
-            ["profile", "Profile"],
-            ["security", "Security"],
-            ["prefs", "Preferences"],
-          ] as const
-        ).map(([k, label]) => (
+      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2 dark:border-slate-800">
+        {tabs.map(({ key, label }) => (
           <button
-            key={k}
+            key={key}
             type="button"
-            onClick={() => setTab(k)}
-            className={
-              tab === k
-                ? "rounded-full bg-oove-blue px-4 py-2 text-sm font-semibold text-white"
-                : "rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-            }
+            onClick={() => setTab(key)}
+            className={clsx(
+              "rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200",
+              tab === key
+                ? "bg-oove-blue text-white"
+                : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
+            )}
           >
             {label}
           </button>
         ))}
       </div>
 
-      {tab === "profile" && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-          <h2 className="text-lg font-semibold">Profile</h2>
-          <input className="w-full rounded-xl border px-3 py-2" placeholder="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-          <input className="w-full rounded-xl border px-3 py-2" placeholder="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-          <button type="button" disabled={saveProfile.isPending} onClick={() => saveProfile.mutate()} className="rounded-xl bg-oove-blue px-4 py-2 font-semibold text-white">
-            Save
-          </button>
+      {tab === "account" && (
+        <div className="space-y-6">
+          <SettingsCard>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Profile</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              Update your display name and username. Email cannot be changed here.
+            </p>
+
+            {profileQ.isLoading ? (
+              <div className="mt-6 space-y-4">
+                <SkeletonLine className="h-4 w-24" />
+                <SkeletonLine className="h-10 w-full" />
+                <SkeletonLine className="h-4 w-24" />
+                <SkeletonLine className="h-10 w-full" />
+                <SkeletonLine className="h-4 w-24" />
+                <SkeletonLine className="h-10 w-full" />
+              </div>
+            ) : profileQ.isError ? (
+              <p className="mt-4 text-sm text-red-600 dark:text-red-400">{(profileQ.error as Error).message}</p>
+            ) : (
+              <div className="mt-6 space-y-4">
+                <div>
+                  <label className={labelClass()} htmlFor="settings-full-name">
+                    Full name
+                  </label>
+                  <input
+                    id="settings-full-name"
+                    className={clsx(fieldClass(), "mt-1.5")}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Your name"
+                    autoComplete="name"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass()} htmlFor="settings-username">
+                    Username
+                  </label>
+                  <input
+                    id="settings-username"
+                    className={clsx(fieldClass(), "mt-1.5 font-mono")}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
+                    placeholder="your_username"
+                    autoComplete="username"
+                  />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Letters, numbers, and underscores · 3–32 characters
+                  </p>
+                </div>
+                <div>
+                  <label className={labelClass()} htmlFor="settings-email">
+                    Email
+                  </label>
+                  <input
+                    id="settings-email"
+                    className={clsx(fieldClass(), "mt-1.5 cursor-not-allowed bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-400")}
+                    value={displayEmail}
+                    readOnly
+                    aria-readonly
+                  />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Signed-in account email (read only)</p>
+                </div>
+                <button
+                  type="button"
+                  disabled={saveProfile.isPending || !token}
+                  onClick={() => saveProfile.mutate()}
+                  className={clsx(
+                    "rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition",
+                    saveProfile.isPending ? "bg-oove-blue/70" : "bg-oove-blue hover:brightness-105",
+                    profileSavedFlash && !saveProfile.isPending && "ring-2 ring-emerald-400 ring-offset-2 dark:ring-offset-slate-900",
+                  )}
+                >
+                  {saveProfile.isPending ? "Saving…" : profileSavedFlash ? "Saved ✓" : "Save profile"}
+                </button>
+              </div>
+            )}
+          </SettingsCard>
+
+          <SettingsCard>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Change password</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Minimum 8 characters for your new password.</p>
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className={labelClass()} htmlFor="settings-cur-pw">
+                  Current password
+                </label>
+                <input
+                  id="settings-cur-pw"
+                  type="password"
+                  autoComplete="current-password"
+                  className={clsx(fieldClass(), "mt-1.5")}
+                  value={curPw}
+                  onChange={(e) => setCurPw(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={labelClass()} htmlFor="settings-new-pw">
+                  New password
+                </label>
+                <input
+                  id="settings-new-pw"
+                  type="password"
+                  autoComplete="new-password"
+                  className={clsx(fieldClass(), "mt-1.5")}
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  minLength={8}
+                />
+              </div>
+              <div>
+                <label className={labelClass()} htmlFor="settings-confirm-pw">
+                  Confirm new password
+                </label>
+                <input
+                  id="settings-confirm-pw"
+                  type="password"
+                  autoComplete="new-password"
+                  className={clsx(
+                    fieldClass(),
+                    "mt-1.5",
+                    confirmPw.length > 0 && newPw !== confirmPw && "border-red-300 focus:border-red-500 focus:ring-red-200",
+                  )}
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                  minLength={8}
+                />
+                {confirmPw.length > 0 && newPw !== confirmPw ? (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">Passwords do not match</p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                disabled={
+                  changePw.isPending ||
+                  !token ||
+                  curPw.length === 0 ||
+                  newPw.length < 8 ||
+                  confirmPw.length < 8 ||
+                  newPw !== confirmPw
+                }
+                onClick={() => changePw.mutate()}
+                className={clsx(
+                  "rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition",
+                  changePw.isPending ? "bg-slate-600/70" : "bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white",
+                  pwSavedFlash && !changePw.isPending && "ring-2 ring-emerald-400 ring-offset-2 dark:ring-offset-slate-900",
+                )}
+              >
+                {changePw.isPending ? "Updating…" : pwSavedFlash ? "Updated ✓" : "Update password"}
+              </button>
+            </div>
+          </SettingsCard>
+        </div>
+      )}
+
+      {tab === "prefs" && (
+        <div className="space-y-6">
+          <SettingsCard className="space-y-5">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Appearance</h2>
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-950/50">
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Theme</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Light or dark interface</p>
+              </div>
+              <ThemeToggle />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setTheme("light")}
+                className={clsx(
+                  "rounded-full border px-4 py-2 text-sm font-semibold transition duration-200",
+                  theme === "light"
+                    ? "border-oove-blue bg-oove-blue text-white"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800",
+                )}
+              >
+                Light
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme("dark")}
+                className={clsx(
+                  "rounded-full border px-4 py-2 text-sm font-semibold transition duration-200",
+                  theme === "dark"
+                    ? "border-oove-blue bg-oove-blue text-white"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800",
+                )}
+              >
+                Dark
+              </button>
+            </div>
+          </SettingsCard>
+
+          <SettingsCard className="space-y-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Regional</h2>
+            <div>
+              <label className={labelClass()} htmlFor="settings-currency">
+                Currency
+              </label>
+              <select
+                id="settings-currency"
+                className={clsx(fieldClass(), "mt-1.5")}
+                value={currency}
+                onChange={(e) => {
+                  setCurrency(e.target.value as DisplayCurrency);
+                  showToast(`Display currency set to ${e.target.value}`, "success");
+                }}
+              >
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelClass()} htmlFor="settings-language">
+                Language
+              </label>
+              <select
+                id="settings-language"
+                className={clsx(fieldClass(), "mt-1.5")}
+                value={language}
+                onChange={(e) => {
+                  setLanguage(e.target.value as DisplayLanguage);
+                  showToast("Language preference saved", "success");
+                }}
+              >
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+              </select>
+            </div>
+          </SettingsCard>
+
+          <SettingsCard>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Privacy</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              Hide portfolio totals and charts on shared screens.
+            </p>
+            <div className="mt-4 flex max-w-md items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-950/50">
+              <BalanceVisibilityEyeToggle className="mt-0.5" />
+              <div>
+                <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  Portfolio balance visibility
+                </span>
+                <span className="mt-1 block text-xs text-slate-600 dark:text-slate-400">
+                  Synced with the eye control on Dashboard and Portfolio.
+                </span>
+              </div>
+            </div>
+          </SettingsCard>
         </div>
       )}
 
       {tab === "security" && (
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-3">
-            <h2 className="text-lg font-semibold">Change password</h2>
-            <input type="password" className="w-full rounded-xl border px-3 py-2" placeholder="Current" value={curPw} onChange={(e) => setCurPw(e.target.value)} />
-            <input type="password" className="w-full rounded-xl border px-3 py-2" placeholder="New (min 8 chars)" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
-            <button type="button" disabled={changePw.isPending} onClick={() => changePw.mutate()} className="rounded-xl bg-slate-900 px-4 py-2 font-semibold text-white">
-              Update password
-            </button>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">Sessions</h2>
+        <SettingsCard>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Sessions</h2>
+          {sessions.isLoading ? (
+            <div className="mt-4 space-y-3">
+              <SkeletonLine className="h-14 w-full" />
+              <SkeletonLine className="h-14 w-full" />
+            </div>
+          ) : (
             <ul className="mt-3 space-y-2 text-sm">
               {(sessions.data?.data ?? []).map((s) => (
-                <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 py-2">
+                <li
+                  key={s.id}
+                  className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 py-2 dark:border-slate-800"
+                >
                   <div>
                     <p className="font-mono text-xs text-slate-500">{s.id.slice(0, 8)}…</p>
-                    <p className="text-slate-600">{s.user_agent ?? "Unknown device"}</p>
+                    <p className="text-slate-700 dark:text-slate-300">{s.user_agent ?? "Unknown device"}</p>
                     <p className="text-xs text-slate-400">{new Date(s.created_at).toLocaleString()}</p>
                   </div>
                   {s.revoked_at ? (
                     <span className="text-xs text-slate-400">Revoked</span>
                   ) : (
-                    <button type="button" className="text-sm text-red-600 hover:underline" onClick={() => revoke.mutate(s.id)}>
+                    <button
+                      type="button"
+                      className="text-sm text-red-600 hover:underline dark:text-red-400"
+                      onClick={() => revoke.mutate(s.id)}
+                    >
                       Revoke
                     </button>
                   )}
                 </li>
               ))}
             </ul>
-          </div>
-        </div>
-      )}
-
-      {tab === "prefs" && (
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-            <h2 className="text-lg font-semibold">Privacy</h2>
-            <p className="text-sm text-slate-600">
-              When off, portfolio totals (USD and BTC), allocation figures, holdings, and the value chart are hidden
-              on Dashboard and Portfolio — useful on shared screens.
-            </p>
-            <div className="flex max-w-md items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-              <BalanceVisibilityEyeToggle className="mt-0.5" />
-              <div>
-                <span className="block text-sm font-semibold text-slate-900">Portfolio balance visibility</span>
-                <span className="mt-1 block text-xs text-slate-600">
-                  Use the eye control next to Total value on Dashboard and Portfolio, or here — all stay in sync via
-                  your browser.
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-            <h2 className="text-lg font-semibold">Appearance</h2>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setTheme("light")}
-              className={clsx(
-                "rounded-full border px-5 py-2.5 text-sm font-semibold transition",
-                theme === "light" ? "border-accent bg-accent text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-              )}
-            >
-              Light
-            </button>
-            <button
-              type="button"
-              onClick={() => setTheme("dark")}
-              className={clsx(
-                "rounded-full border px-5 py-2.5 text-sm font-semibold transition",
-                theme === "dark" ? "border-accent bg-accent text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-              )}
-            >
-              Dark
-            </button>
-          </div>
-          </div>
-        </div>
+          )}
+        </SettingsCard>
       )}
     </div>
   );

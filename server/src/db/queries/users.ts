@@ -243,3 +243,30 @@ export async function updateUserNames(userId: string, firstName: string | null, 
     [userId, firstName, lastName],
   );
 }
+
+export async function isUsernameAvailableForUser(username: string, excludeUserId: string): Promise<boolean> {
+  const u = username.trim().toLowerCase();
+  if (u.length < 3 || isReservedUsername(u)) return false;
+  const res = await pool.query(`SELECT 1 FROM users WHERE LOWER(username) = $1 AND id <> $2::uuid LIMIT 1`, [
+    u,
+    excludeUserId,
+  ]);
+  return (res.rowCount ?? 0) === 0;
+}
+
+export async function updateUsername(userId: string, username: string): Promise<void> {
+  const u = username.trim().toLowerCase();
+  await pool.query(`UPDATE users SET username = $2::text WHERE id = $1::uuid`, [userId, u]);
+}
+
+export function formatUserFullName(firstName: string | null, lastName: string | null): string {
+  return [firstName, lastName].filter((p) => p && p.trim().length > 0).join(" ").trim();
+}
+
+export function parseFullName(fullName: string): { firstName: string | null; lastName: string | null } {
+  const trimmed = fullName.trim();
+  if (!trimmed) return { firstName: null, lastName: null };
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return { firstName: parts[0]!, lastName: null };
+  return { firstName: parts[0]!, lastName: parts.slice(1).join(" ") };
+}
