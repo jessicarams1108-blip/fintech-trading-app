@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { createChart, LineSeries, ColorType, type Time } from "lightweight-charts";
 import { useAuth } from "@/state/AuthContext";
 import { formatAssetQuantity, formatBtcEquivalent, formatPortfolioTotalUsd } from "@/lib/portfolioFormat";
-import { MaskedValue, useBalanceVisibility } from "@/state/BalanceVisibilityContext";
+import { MaskedValue } from "@/state/BalanceVisibilityContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
+import { MarketOverviewPanel } from "@/components/MarketOverviewPanel";
 import { apiFetch } from "@/lib/apiBase";
 
 type Summary = { totalValueUsd: number; change24hPct: number; allocation: { symbol: string; valueUsd: number }[] };
@@ -36,9 +36,6 @@ async function fetchJson<T>(path: string, token: string): Promise<T> {
 
 export function PortfolioPage() {
   const { token } = useAuth();
-  const { showBalances } = useBalanceVisibility();
-  const [range, setRange] = useState<"1d" | "1w" | "1m" | "1y" | "all">("1m");
-  const chartRef = useRef<HTMLDivElement>(null);
 
   const topQ = useQuery({
     queryKey: ["market", "top-prices"],
@@ -65,63 +62,6 @@ export function PortfolioPage() {
     queryFn: () => fetchJson<{ data: Holding[] }>("/api/portfolio/holdings", token!).then((r) => r.data),
   });
 
-  const historyQ = useQuery({
-    queryKey: ["portfolio", "history", token, range],
-    enabled: !!token,
-    queryFn: () =>
-      fetchJson<{ data: { points: { time: string; value: number }[] } }>(
-        `/api/portfolio/history?range=${encodeURIComponent(range)}`,
-        token!,
-      ).then((r) => r.data.points),
-  });
-
-  const chartData = useMemo(() => {
-    const pts = historyQ.data ?? [];
-    return pts.map((p) => ({
-      time: p.time as Time,
-      value: p.value,
-    }));
-  }, [historyQ.data]);
-
-  useEffect(() => {
-    if (!showBalances || !chartRef.current) return;
-    const el = chartRef.current;
-    const w = Math.max(el.clientWidth, 280);
-    const h = 300;
-    const chart = createChart(el, {
-      width: w,
-      height: h,
-      layout: { background: { type: ColorType.Solid, color: "#ffffff" }, textColor: "#334155" },
-      grid: {
-        vertLines: { color: "rgba(148, 163, 184, 0.25)" },
-        horzLines: { color: "rgba(148, 163, 184, 0.25)" },
-      },
-      localization: {
-        priceFormatter: (price: number) => formatPortfolioTotalUsd(price),
-      },
-      rightPriceScale: { borderVisible: false },
-      timeScale: { borderVisible: false },
-    });
-    const series = chart.addSeries(LineSeries, { color: "#1d4ed8", lineWidth: 2 });
-    if (chartData.length > 1) {
-      series.setData(chartData);
-      chart.timeScale().fitContent();
-    } else if (chartData.length === 1) {
-      series.setData([chartData[0]!, { ...chartData[0]!, value: chartData[0]!.value * 1.0001 }]);
-      chart.timeScale().fitContent();
-    }
-
-    const ro = new ResizeObserver(() => {
-      const nw = el.clientWidth;
-      if (nw > 0) chart.resize(nw, h);
-    });
-    ro.observe(el);
-    return () => {
-      ro.disconnect();
-      chart.remove();
-    };
-  }, [chartData, showBalances]);
-
   const total = summaryQ.data?.totalValueUsd ?? 0;
   const chg = summaryQ.data?.change24hPct ?? 0;
   const alloc = summaryQ.data?.allocation ?? [];
@@ -133,8 +73,9 @@ export function PortfolioPage() {
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Portfolio</p>
           <h1 className="text-3xl font-semibold text-slate-900">Holdings & performance</h1>
           <p className="mt-2 max-w-2xl text-slate-600">
-            Values use live CoinGecko prices when available, with static fallbacks. Daily snapshots power the chart after
-            you load this page.
+            Your balance and allocation use live prices. Below, explore public market data (price, market cap, volume,
+            history) with the same sources as major portfolio apps — CoinMarketCap for live stats when configured, CoinGecko
+            for historical series.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -158,7 +99,7 @@ export function PortfolioPage() {
           <div className="flex items-start gap-2">
             <BalanceVisibilityEyeToggle className="mt-0.5" />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Total value</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Portfolio value</p>
               <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
                 <MaskedValue>{formatPortfolioTotalUsd(total)}</MaskedValue>
               </p>
@@ -192,35 +133,7 @@ export function PortfolioPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-900">Portfolio value</h2>
-          <div className="flex flex-wrap gap-1">
-            {(["1d", "1w", "1m", "1y", "all"] as const).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRange(r)}
-                className={
-                  range === r
-                    ? "rounded-full bg-oove-blue px-3 py-1 text-xs font-semibold text-white"
-                    : "rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                }
-              >
-                {r.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-        {showBalances ? (
-          <div ref={chartRef} className="mt-4 h-[300px] w-full" />
-        ) : (
-          <div className="mt-4 flex h-[300px] w-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-center text-sm text-slate-600">
-            Chart hidden while balances are concealed.
-          </div>
-        )}
-        {historyQ.isError ? <p className="mt-2 text-sm text-red-600">{(historyQ.error as Error).message}</p> : null}
-      </div>
+      <MarketOverviewPanel chartHeight={300} />
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-6 py-4">
@@ -267,7 +180,7 @@ export function PortfolioPage() {
                   </td>
                   <td className="px-6 py-3">
                     <Link to="/transfers" className="text-oove-blue hover:underline">
-                      Trade
+                      Manage
                     </Link>
                   </td>
                 </tr>

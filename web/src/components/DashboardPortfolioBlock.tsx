@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { createChart, LineSeries, ColorType, type Time } from "lightweight-charts";
 import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
 import type { AssetSymbol } from "@/types";
-import { validateTxHash } from "@/lib/validators";
 import { uploadDepositProofIfConfigured } from "@/lib/depositProofUpload";
 import { formatAssetQuantity, formatBtcEquivalent, formatPortfolioTotalUsd } from "@/lib/portfolioFormat";
-import { MaskedValue, useBalanceVisibility } from "@/state/BalanceVisibilityContext";
+import { MaskedValue } from "@/state/BalanceVisibilityContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
+import { MarketOverviewPanel } from "@/components/MarketOverviewPanel";
+import { DepositUsdAmountPicker } from "@/components/DepositUsdAmountPicker";
 import { apiFetch } from "@/lib/apiBase";
 
 const MIN_DEPOSIT_USD = 100;
@@ -44,13 +44,6 @@ async function fetchTopPrices(): Promise<TopRow[]> {
   return body.data ?? [];
 }
 
-/** Convert portfolio snapshot date (YYYY-MM-DD) to unix seconds (UTC noon) for the chart. */
-function snapshotDateToUnixUtcNoon(dateStr: string): number {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return Math.floor(Date.now() / 1000);
-  return Math.floor(Date.UTC(y, m - 1, d, 12, 0, 0) / 1000);
-}
-
 function fmtUsdSpot(n: number): string {
   return n.toLocaleString("en-US", {
     style: "currency",
@@ -69,11 +62,24 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
   const { showToast } = useToast();
   const [asset, setAsset] = useState<AssetSymbol>("BTC");
   const [declaredUsd, setDeclaredUsd] = useState("100");
-  const [txHash, setTxHash] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [awaitingId, setAwaitingId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+
+  const priceQ = useQuery({
+    queryKey: ["market", "price", asset],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/market/price?symbol=${encodeURIComponent(asset)}`);
+      const body = (await res.json().catch(() => ({}))) as { data?: { priceUsd?: number }; error?: string };
+      if (!res.ok) throw new Error(body.error ?? "Price unavailable");
+      const px = body.data?.priceUsd;
+      if (typeof px !== "number" || !Number.isFinite(px) || px <= 0) throw new Error("Price unavailable");
+      return px;
+    },
+    staleTime: 20_000,
+    refetchInterval: 35_000,
+  });
 
   useEffect(() => {
     if (!awaitingId) {
@@ -97,9 +103,6 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
       if (!Number.isFinite(declared) || declared < MIN_DEPOSIT_USD) {
         throw new Error(`Declare at least $${MIN_DEPOSIT_USD} USD equivalent.`);
       }
-      const v = validateTxHash(asset, txHash);
-      if (!v.ok) throw new Error(v.error);
-
       let depositProofKey: string | undefined;
       let screenshotFileName: string | undefined;
       if (proofFile) {
@@ -116,7 +119,6 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
         },
         body: JSON.stringify({
           asset,
-          txHash: txHash.trim(),
           declaredAmountUsd: declared,
           ...(depositProofKey ? { depositProofKey } : screenshotFileName ? { screenshotFileName } : {}),
         }),
@@ -128,7 +130,6 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
     onSuccess: (id) => {
       showToast("Proof submitted — waiting for operator confirmation.");
       setAwaitingId(id || "pending");
-      setTxHash("");
       setProofFile(null);
       onSubmitted();
     },
@@ -148,8 +149,8 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
     <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/80 p-6 shadow-sm">
       <h3 className="text-lg font-semibold text-slate-900">Deposit</h3>
       <p className="mt-1 text-sm text-slate-600">
-        Choose asset and declared USD, paste your on-chain tx id, attach an optional proof file, then confirm you have
-        sent funds. Ops usually confirms within a few minutes.
+        Choose asset and declared USD, attach a proof file if you have one, then submit after you have sent funds.
+        Confirmation usually arrives within a few minutes.
       </p>
 
       {awaitingId ? (
@@ -190,26 +191,16 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
             ))}
           </select>
         </div>
+        <DepositUsdAmountPicker
+          minUsd={MIN_DEPOSIT_USD}
+          value={declaredUsd}
+          onChange={setDeclaredUsd}
+          assetSymbol={asset}
+          spotUsdPerUnit={priceQ.data ?? null}
+          spotError={priceQ.isError}
+        />
         <div>
-          <label className="text-xs font-medium uppercase text-slate-500">Declared amount (USD equivalent)</label>
-          <input
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm tabular-nums"
-            value={declaredUsd}
-            onChange={(e) => setDeclaredUsd(e.target.value)}
-            min={MIN_DEPOSIT_USD}
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium uppercase text-slate-500">Transaction hash</label>
-          <input
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 font-mono text-xs"
-            value={txHash}
-            onChange={(e) => setTxHash(e.target.value)}
-            placeholder="0x… or 64-char BTC id"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium uppercase text-slate-500">Proof file (optional)</label>
+          <label className="text-xs font-medium uppercase text-slate-500">Proof file</label>
           <input
             type="file"
             accept="image/*,application/pdf"
@@ -240,10 +231,7 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
 
 export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlowChanged?: () => void }) {
   const { token } = useAuth();
-  const { showBalances } = useBalanceVisibility();
   const qc = useQueryClient();
-  const [range, setRange] = useState<"1d" | "1w" | "1m" | "1y" | "all">("1m");
-  const chartRef = useRef<HTMLDivElement>(null);
 
   const summaryQ = useQuery({
     queryKey: ["portfolio", "summary", token],
@@ -261,17 +249,6 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
     refetchIntervalInBackground: true,
   });
 
-  const historyQ = useQuery({
-    queryKey: ["portfolio", "history", token, range],
-    enabled: !!token,
-    queryFn: () =>
-      authFetch<{ data: { points: { time: string; value: number }[] } }>(
-        `/api/portfolio/history?range=${encodeURIComponent(range)}`,
-        token!,
-      ).then((r) => r.data.points),
-    refetchInterval: 120_000,
-  });
-
   const topQ = useQuery({
     queryKey: ["market", "top-prices"],
     queryFn: fetchTopPrices,
@@ -284,74 +261,6 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
     const px = row?.priceUsd;
     return typeof px === "number" && Number.isFinite(px) && px > 0 ? px : 0;
   }, [topQ.data]);
-
-  const chartData = useMemo(() => {
-    const raw = historyQ.data ?? [];
-    const totalLive = summaryQ.data?.totalValueUsd;
-    const nowUnix = Math.floor(Date.now() / 1000);
-    const nowSec = nowUnix as Time;
-
-    const base = raw.map((p) => ({
-      time: snapshotDateToUnixUtcNoon(p.time) as Time,
-      value: p.value,
-    }));
-
-    if (totalLive === undefined || !Number.isFinite(totalLive)) {
-      return base;
-    }
-
-    if (base.length === 0) {
-      return [
-        { time: (nowUnix - 86_400) as Time, value: totalLive },
-        { time: nowSec, value: totalLive },
-      ];
-    }
-
-    const today = new Date().toISOString().slice(0, 10);
-    const lastHistDay = raw[raw.length - 1]?.time;
-    const trimmed = lastHistDay === today ? base.slice(0, -1) : base;
-
-    return [...trimmed, { time: nowSec, value: totalLive }];
-  }, [historyQ.data, summaryQ.data, summaryQ.dataUpdatedAt]);
-
-  useEffect(() => {
-    if (!showBalances || !chartRef.current) return;
-    const el = chartRef.current;
-    const w = Math.max(el.clientWidth, 280);
-    const h = 260;
-    const chart = createChart(el, {
-      width: w,
-      height: h,
-      layout: { background: { type: ColorType.Solid, color: "#ffffff" }, textColor: "#334155" },
-      grid: {
-        vertLines: { color: "rgba(148, 163, 184, 0.25)" },
-        horzLines: { color: "rgba(148, 163, 184, 0.25)" },
-      },
-      localization: {
-        priceFormatter: (price: number) => formatPortfolioTotalUsd(price),
-      },
-      rightPriceScale: { borderVisible: false },
-      timeScale: { borderVisible: false },
-    });
-    const series = chart.addSeries(LineSeries, { color: "#1d4ed8", lineWidth: 2 });
-    if (chartData.length > 1) {
-      series.setData(chartData);
-      chart.timeScale().fitContent();
-    } else if (chartData.length === 1) {
-      series.setData([chartData[0]!, { ...chartData[0]!, value: chartData[0]!.value * 1.0001 }]);
-      chart.timeScale().fitContent();
-    }
-
-    const ro = new ResizeObserver(() => {
-      const nw = el.clientWidth;
-      if (nw > 0) chart.resize(nw, h);
-    });
-    ro.observe(el);
-    return () => {
-      ro.disconnect();
-      chart.remove();
-    };
-  }, [chartData, showBalances]);
 
   const total = summaryQ.data?.totalValueUsd ?? 0;
   const chg = summaryQ.data?.change24hPct ?? 0;
@@ -406,9 +315,8 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Portfolio</p>
           <h2 className="text-2xl font-semibold text-slate-900">Holdings & performance</h2>
           <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            Values use live market prices (CoinGecko when available). The chart blends daily snapshots with a{" "}
-            <span className="font-medium text-slate-800">live</span> point that moves as spot prices refresh (socket +
-            periodic refetch).
+            Your totals use live spot prices. Below, browse market-wide price, capitalization, volume, and history like
+            CoinMarketCap — refreshed automatically.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -517,42 +425,7 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">Portfolio value</h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  History from daily snapshots; trailing point tracks current market-based total.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {(["1d", "1w", "1m", "1y", "all"] as const).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setRange(r)}
-                    className={
-                      range === r
-                        ? "rounded-full bg-oove-blue px-3 py-1 text-xs font-semibold text-white"
-                        : "rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                    }
-                  >
-                    {r.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {showBalances ? (
-              <div ref={chartRef} className="mt-4 h-[260px] w-full" />
-            ) : (
-              <div className="mt-4 flex h-[260px] w-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-center text-sm text-slate-600">
-                Portfolio chart hidden while balances are concealed.
-                <br />
-                <span className="text-xs text-slate-500">Turn on “Show balances” above to view the chart.</span>
-              </div>
-            )}
-            {historyQ.isError ? <p className="mt-2 text-sm text-red-600">{(historyQ.error as Error).message}</p> : null}
-          </div>
+          <MarketOverviewPanel chartHeight={260} />
 
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-200 px-5 py-3">
@@ -599,7 +472,7 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
                       </td>
                       <td className="px-5 py-2">
                         <Link to="/transfers" className="text-oove-blue hover:underline">
-                          Trade
+                          Manage
                         </Link>
                       </td>
                     </tr>

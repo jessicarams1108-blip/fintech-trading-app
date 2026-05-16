@@ -16,7 +16,8 @@ export const STATIC_USD: Record<string, number> = {
   MATIC: 0.42,
 };
 
-const COINGECKO_IDS: Record<string, string> = {
+/** CoinGecko `/coins/{id}` id per symbol — shared with extended market overview. */
+export const COINGECKO_IDS: Record<string, string> = {
   BTC: "bitcoin",
   ETH: "ethereum",
   USDT: "tether",

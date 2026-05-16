@@ -12,7 +12,7 @@ import http from "node:http";
 import { Server as SocketIOServer } from "socket.io";
 import jwt from "jsonwebtoken";
 import { env } from "./env.js";
-import { pool } from "./db/index.js";
+import { pgHost, pool } from "./db/index.js";
 import { createAdminDepositRoutes, createPublicDepositRoutes, } from "./routes/deposits.js";
 import { createAdminOpsRoutes } from "./routes/adminOps.js";
 import { authRouter } from "./routes/auth.js";
@@ -84,15 +84,6 @@ setInterval(() => {
         }
     })();
 }, 25_000);
-pool
-    .query("SELECT NOW() AS now")
-    .then(() => {
-    console.log("[Startup] Postgres connection OK");
-})
-    .catch((err) => {
-    console.error("[Startup] Cannot reach Postgres — check DATABASE_URL", err.message);
-    process.exit(1);
-});
 app.use(helmet());
 app.use(cors({ origin: corsOrigins, credentials: true }));
 app.use(express.json({ limit: "512kb" }));
@@ -149,3 +140,38 @@ server.listen(listenPort, "0.0.0.0", () => {
         ? `API + Socket.IO + web (static ${WEB_DIST}) on 0.0.0.0:${listenPort}`
         : `API + Socket.IO on 0.0.0.0:${listenPort} (no web dist at ${WEB_DIST} — run npm run build -w web)`);
 });
+function formatConnectError(err) {
+    if (err instanceof AggregateError) {
+        const parts = err.errors.map((e) => formatConnectError(e)).filter(Boolean);
+        return parts.length > 0 ? parts.join("; ") : err.message || "AggregateError";
+    }
+    if (err && typeof err === "object") {
+        const e = err;
+        if (e.message?.trim())
+            return e.message;
+        if (e.code)
+            return `code=${e.code}`;
+    }
+    return String(err);
+}
+/** Retry Postgres in background; do not exit — avoids Render crash loop while DATABASE_URL is fixed. */
+async function verifyPostgresWithRetry() {
+    const dbHost = pgHost(env.DATABASE_URL);
+    const looksInternal = /^dpg-[a-z0-9-]+$/i.test(dbHost);
+    console.log(`[Startup] DATABASE_URL host=${dbHost || "(unparseable)"} internal=${looksInternal} — use Render **Internal** URL from fintech-trading-db`);
+    const delayMs = 2_000;
+    let attempt = 0;
+    for (;;) {
+        attempt += 1;
+        try {
+            await pool.query("SELECT NOW() AS now");
+            console.log("[Startup] Postgres connection OK");
+            return;
+        }
+        catch (err) {
+            console.error(`[Startup] Postgres attempt ${attempt} failed (host=${dbHost}): ${formatConnectError(err)}`);
+            await new Promise((r) => setTimeout(r, delayMs));
+        }
+    }
+}
+void verifyPostgresWithRetry();

@@ -15,7 +15,8 @@ export const STATIC_USD = {
     DOT: 7.2,
     MATIC: 0.42,
 };
-const COINGECKO_IDS = {
+/** CoinGecko `/coins/{id}` id per symbol — shared with extended market overview. */
+export const COINGECKO_IDS = {
     BTC: "bitcoin",
     ETH: "ethereum",
     USDT: "tether",

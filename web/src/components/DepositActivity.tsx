@@ -80,7 +80,6 @@ export function DepositActivityList({ rows }: { rows: DepositActivityDto[] }) {
               {statusLabel(r.status)}
             </span>
           </div>
-          <p className="mt-1 font-mono text-xs text-slate-500 break-all">{r.txHash}</p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
             {r.declaredAmountUsd != null ? (
               <span>

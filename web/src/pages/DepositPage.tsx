@@ -1,12 +1,13 @@
+import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/apiBase";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import type { AssetSymbol, DepositStatus } from "@/types";
 import { offlineDepositConfig } from "@/lib/offlineDepositConfig";
-import { validateTxHash } from "@/lib/validators";
 import { uploadDepositProofIfConfigured } from "@/lib/depositProofUpload";
 import { useAuth } from "@/state/AuthContext";
+import { DepositUsdAmountPicker } from "@/components/DepositUsdAmountPicker";
 
 const DEFAULT_ASSETS: AssetSymbol[] = ["BTC", "ETH", "USDT"];
 
@@ -26,7 +27,6 @@ export function DepositPage() {
   const { token } = useAuth();
   const [asset, setAsset] = useState<AssetSymbol>("BTC");
   const [step, setStep] = useState<Step>("awaiting_payment");
-  const [txHash, setTxHash] = useState("");
   const [declaredUsd, setDeclaredUsd] = useState("100");
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +61,20 @@ export function DepositPage() {
 
   const address = config?.address ?? "";
 
+  const priceQ = useQuery({
+    queryKey: ["market", "price", asset],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/market/price?symbol=${encodeURIComponent(asset)}`);
+      const body = (await res.json().catch(() => ({}))) as { data?: { priceUsd?: number }; error?: string };
+      if (!res.ok) throw new Error(body.error ?? "Price unavailable");
+      const px = body.data?.priceUsd;
+      if (typeof px !== "number" || !Number.isFinite(px) || px <= 0) throw new Error("Price unavailable");
+      return px;
+    },
+    staleTime: 20_000,
+    refetchInterval: 35_000,
+  });
+
   const tracker = useMemo(
     () => [
       {
@@ -71,12 +85,12 @@ export function DepositPage() {
       {
         key: "pending_review",
         label: "Pending review",
-        description: "Ops is verifying your transaction.",
+        description: "We are verifying your transfer and proof.",
       },
       {
         key: "confirmed",
         label: "Confirmed",
-        description: "Balance credited and notification sent.",
+        description: "Balance credited; you will get a notification.",
       },
     ],
     [],
@@ -100,13 +114,9 @@ export function DepositPage() {
 
     setError(null);
     const declared = Number.parseFloat(declaredUsd);
-    if (!Number.isFinite(declared) || declared < MIN_DEPOSIT_USD) {
-      setError(`Declare at least $${MIN_DEPOSIT_USD} USD for this deposit (policy).`);
-      return;
-    }
-    const v = validateTxHash(asset, txHash);
-    if (!v.ok) {
-      setError(v.error);
+    const minDec = Math.max(config?.minDeclaredUsd ?? MIN_DEPOSIT_USD, MIN_DEPOSIT_USD);
+    if (!Number.isFinite(declared) || declared < minDec) {
+      setError(`Declare at least $${minDec.toLocaleString("en-US")} USD for this deposit (policy).`);
       return;
     }
     setSubmitting(true);
@@ -128,7 +138,6 @@ export function DepositPage() {
         },
         body: JSON.stringify({
           asset,
-          txHash: txHash.trim(),
           declaredAmountUsd: declared,
           ...(depositProofKey ? { depositProofKey } : screenshotFileName ? { screenshotFileName } : {}),
         }),
@@ -165,33 +174,32 @@ export function DepositPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <p className="text-sm uppercase tracking-wide text-slate-500">Funding</p>
-        <h1 className="text-3xl font-semibold">Crypto deposit</h1>
-        <p className="mt-2 text-slate-600 dark:text-slate-300">
+        <h1 className="text-3xl font-semibold text-slate-900">Crypto deposit</h1>
+        <p className="mt-2 text-slate-600">
           Each supply submission must declare at least{" "}
-          <span className="font-semibold text-slate-900 dark:text-slate-50">
+          <span className="font-semibold text-slate-900">
             ${(config?.minDeclaredUsd ?? MIN_DEPOSIT_USD).toLocaleString("en-US")} USD
           </span>{" "}
           equivalent for that transfer. Borrowing is a separate step: you need a cumulative{" "}
-          <span className="font-semibold text-slate-900 dark:text-slate-50">$10,000</span> supplied (USD equivalent) plus
-          verified identity before you can borrow — see the Home checklist.
+          <span className="font-semibold text-slate-900">$10,000</span> supplied (USD equivalent) plus verified identity
+          before you can borrow — see the Home checklist.
         </p>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        <p className="mt-2 text-sm text-slate-600">
           {config?.network ? (
             <>
-              Network:{" "}
-              <span className="font-semibold text-slate-900 dark:text-slate-50">{config.network}</span>
+              Network: <span className="font-semibold text-slate-900">{config.network}</span>
               {" · "}
             </>
           ) : null}
-          <span>{summaryParagraph}</span> Allow up to <span className="font-semibold">30 minutes</span> for
-          confirmations.
+          <span>{summaryParagraph}</span> Allow up to <span className="font-semibold text-slate-800">30 minutes</span>{" "}
+          for confirmations.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">Asset</label>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <label className="text-sm font-medium text-slate-700">Asset</label>
         <select
-          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-lg font-semibold dark:border-slate-700 dark:bg-slate-950"
+          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-lg font-semibold text-slate-900 shadow-inner"
           value={asset}
           onChange={(ev) => setAsset(ev.target.value as AssetSymbol)}
         >
@@ -203,29 +211,49 @@ export function DepositPage() {
         </select>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-lg font-semibold">Status</h2>
-        <ol className="mt-4 space-y-4">
+      {step !== "pending_review" ? (
+        <DepositUsdAmountPicker
+          minUsd={Math.max(config?.minDeclaredUsd ?? MIN_DEPOSIT_USD, MIN_DEPOSIT_USD)}
+          value={declaredUsd}
+          onChange={setDeclaredUsd}
+          assetSymbol={asset}
+          spotUsdPerUnit={priceQ.data ?? null}
+          spotError={priceQ.isError}
+        />
+      ) : null}
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Status</h2>
+        <ol className="mt-4 grid gap-3 sm:grid-cols-3">
           {tracker.map((t, idx) => {
             const completed = milestoneIndex > idx && milestoneIndex >= 0;
             const active =
               milestoneIndex === idx ||
               (step === "form" && t.key === "awaiting_payment" && milestoneIndex <= 0);
             return (
-              <li key={t.key} className="flex gap-4">
-                <div
-                  className={
-                    completed
-                      ? "mt-1 h-3 w-3 rounded-full bg-emerald-500"
-                      : active
-                        ? "mt-1 h-3 w-3 rounded-full bg-accent ring-4 ring-accent/30"
-                        : "mt-1 h-3 w-3 rounded-full bg-slate-300 dark:bg-slate-700"
-                  }
-                />
-                <div>
-                  <p className="font-semibold">{t.label}</p>
-                  <p className="text-sm text-slate-500">{t.description}</p>
+              <li
+                key={t.key}
+                className={
+                  completed
+                    ? "rounded-xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm"
+                    : active
+                      ? "rounded-xl border-2 border-oove-blue bg-blue-50/80 p-4 shadow-sm ring-2 ring-oove-blue/15"
+                      : "rounded-xl border border-slate-200 bg-slate-50/80 p-4"
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={
+                      completed
+                        ? "inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500"
+                        : active
+                          ? "inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-oove-blue"
+                          : "inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-slate-300"
+                    }
+                  />
+                  <p className="font-semibold text-slate-900">{t.label}</p>
                 </div>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">{t.description}</p>
               </li>
             );
           })}
@@ -234,23 +262,21 @@ export function DepositPage() {
 
       {showQr && (
         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-950">
+          <div className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-6 shadow-sm">
             <div className="flex flex-col items-center gap-4">
               {address ? (
                 <>
-                  <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <QRCodeSVG value={address} size={192} bgColor="#ffffff" fgColor="#0f172a" />
                   </div>
-                  <div className="w-full rounded-xl bg-white p-4 text-center font-mono text-sm break-all dark:bg-slate-900">
+                  <div className="w-full rounded-xl border border-slate-200 bg-white p-4 text-center font-mono text-sm break-all text-slate-900">
                     {address}
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  Waiting for treasury configuration…
-                </p>
+                <p className="text-sm text-slate-600">Waiting for treasury configuration…</p>
               )}
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-50">
+              <div className="w-full rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
                 {config?.note ??
                   `Only send ${asset} on the advertised network — never mix networks or unrelated assets.`}
               </div>
@@ -260,54 +286,32 @@ export function DepositPage() {
             {step === "awaiting_payment" && (
               <button
                 type="button"
-                className="w-full rounded-2xl bg-accent px-4 py-3 text-lg font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:bg-blue-600"
+                className="w-full rounded-2xl bg-oove-blue px-4 py-3 text-lg font-semibold text-white shadow-md shadow-oove-blue/25 transition hover:brightness-105"
                 onClick={() => setStep("form")}
               >
                 I’ve made the payment
               </button>
             )}
             {step === "form" && (
-              <form
-                className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
-                onSubmit={submitProof}
-              >
-                <div>
-                  <label className="text-sm font-medium">Declared amount (USD)</label>
-                  <input
-                    type="number"
-                    min={MIN_DEPOSIT_USD}
-                    step="0.01"
-                    className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 font-mono text-sm tabular-nums dark:border-slate-700 dark:bg-slate-950"
-                    value={declaredUsd}
-                    onChange={(e) => setDeclaredUsd(e.target.value)}
-                    required
-                  />
-                  <p className="mt-1 text-xs text-slate-500">Minimum ${MIN_DEPOSIT_USD} per deposit declaration.</p>
+              <form className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" onSubmit={submitProof}>
+                <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  Declaring{" "}
+                  <span className="font-semibold tabular-nums text-slate-900">${declaredUsd}</span> USD equivalent · adjust
+                  amount above if needed.
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Transaction hash / ID</label>
-                  <input
-                    className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 font-mono text-sm dark:border-slate-700 dark:bg-slate-950"
-                    placeholder={asset === "BTC" ? "64 hex chars" : "0x + 64 hex"}
-                    value={txHash}
-                    onChange={(e) => setTxHash(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Proof file (optional)</label>
+                  <label className="text-sm font-medium text-slate-800">Proof file</label>
                   <input
                     type="file"
                     accept="image/*,application/pdf"
-                    className="mt-2 w-full text-sm"
+                    className="mt-2 w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-800"
                     onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
                   />
                   <p className="mt-2 text-xs text-slate-500">
                     {proofFile ? (
                       <>
-                        Selected: <span className="font-mono">{proofFile.name}</span> — when the server has object
-                        storage configured, this file is uploaded before submit; otherwise only the file name is sent
-                        for demo review.
+                        Selected: <span className="font-mono">{proofFile.name}</span> — when object storage is
+                        configured, this uploads before submit; otherwise only the file name is stored for review.
                       </>
                     ) : (
                       "Attach a receipt screenshot or PDF if you have one."
@@ -318,13 +322,13 @@ export function DepositPage() {
                 <button
                   type="submit"
                   disabled={submitting || !token}
-                  className="w-full rounded-xl bg-accent py-3 font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-xl bg-oove-blue py-3 font-semibold text-white hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {!token ? "Sign in to submit proofs" : submitting ? "Submitting…" : "Submit for review"}
                 </button>
                 <button
                   type="button"
-                  className="w-full text-sm text-slate-500 underline"
+                  className="w-full text-sm text-slate-600 underline hover:text-slate-900"
                   onClick={() => setStep("awaiting_payment")}
                 >
                   Back
@@ -336,9 +340,12 @@ export function DepositPage() {
       )}
 
       {step === "pending_review" && (
-        <div className="rounded-2xl border border-dashed border-amber-300 bg-amber-50 p-6 text-amber-900 dark:border-amber-500/50 dark:bg-amber-500/10 dark:text-amber-50">
-          Your proof is queued. Ops will reconcile on‑chain movement and notify you via WebSocket + email/SMS once the
-          balance is credited.
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 text-blue-950 shadow-sm">
+          <p className="font-semibold text-blue-950">Proof received</p>
+          <p className="mt-2 text-sm leading-relaxed text-blue-900/90">
+            Your submission is in the queue. We reconcile transfers against your proof and notify you by WebSocket and
+            email/SMS once your balance is credited.
+          </p>
         </div>
       )}
     </div>

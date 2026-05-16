@@ -69,6 +69,8 @@ const schema = z.object({
   S3_PUBLIC_BASE_URL: z.preprocess(emptyToUndef, z.string().url().optional()),
   /** Custom API endpoint (R2, MinIO). Omit for AWS S3. */
   S3_ENDPOINT: z.preprocess(emptyToUndef, z.string().url().optional()),
+  /** CoinMarketCap Pro API key — optional. When set, live price / mcap / volume / 24h% use CMC; chart history still uses CoinGecko. */
+  COINMARKETCAP_API_KEY: z.preprocess(emptyToUndef, z.string().min(16).optional()),
 });
 
 export const env = schema.parse({
@@ -88,4 +90,5 @@ export const env = schema.parse({
   S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
   S3_PUBLIC_BASE_URL: process.env.S3_PUBLIC_BASE_URL,
   S3_ENDPOINT: process.env.S3_ENDPOINT,
+  COINMARKETCAP_API_KEY: process.env.COINMARKETCAP_API_KEY,
 });

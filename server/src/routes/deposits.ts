@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { Router } from "express";
 import type { Server as SocketIOServer } from "socket.io";
 import { z } from "zod";
@@ -26,7 +27,8 @@ const evmTx = /^0x[a-fA-F0-9]{64}$/;
 
 const submitSchema = z.object({
   asset: z.enum(["BTC", "ETH", "USDT"]),
-  txHash: z.string().min(32).max(120),
+  /** Optional; omitted or empty uses a server-generated placeholder (ops reconciles via proof). */
+  txHash: z.string().max(120).optional(),
   screenshotFileName: z.string().max(260).nullable().optional(),
   /** Object key returned from POST /api/deposit/presign (must belong to the signed-in user). */
   depositProofKey: z.string().min(30).max(500).optional(),
@@ -75,6 +77,13 @@ function validateTxHash(asset: DepositAsset, hash: string) {
   if ((asset === "ETH" || asset === "USDT") && evmTx.test(trimmed)) return trimmed;
   if (asset === "USDT" && /^[a-fA-F0-9]{64}$/.test(trimmed)) return trimmed;
   throw new Error("Malformed transaction identifier for asset");
+}
+
+/** Valid on-chain-shaped ID so DB + duplicate checks stay consistent when the user skips tx hash. */
+function generatedPendingTxHash(asset: DepositAsset): string {
+  const hex = randomBytes(32).toString("hex");
+  if (asset === "BTC") return hex;
+  return `0x${hex}`;
 }
 
 const NETWORK_LABELS: Record<WalletAssetKey, string> = {
@@ -159,7 +168,11 @@ export function createPublicDepositRoutes() {
     }
 
     try {
-      const txHashClean = validateTxHash(parsed.data.asset as DepositAsset, parsed.data.txHash);
+      const rawTx = (parsed.data.txHash ?? "").trim();
+      const txHashClean =
+        rawTx.length > 0
+          ? validateTxHash(parsed.data.asset as DepositAsset, rawTx)
+          : generatedPendingTxHash(parsed.data.asset as DepositAsset);
       let proof: string | null;
       try {
         proof = resolveProofImageUrl(req.user!.id, parsed.data);
