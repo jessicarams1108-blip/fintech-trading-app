@@ -24,6 +24,7 @@ const sidebarMainNav: NavDescriptor[] = [
 const sidebarAdminNav: NavDescriptor[] = [
   { to: "/admin/console", label: "Admin · Console", adminOnly: true },
   { to: "/admin/deposits", label: "Admin · Deposits", adminOnly: true },
+  { to: "/admin/identity", label: "Admin · Identity", adminOnly: true },
 ];
 
 function HamburgerIcon({ open }: { open: boolean }) {

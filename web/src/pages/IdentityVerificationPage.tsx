@@ -1,53 +1,69 @@
 import { apiFetch } from "@/lib/apiBase";
-import { useCallback, useEffect, useState } from "react";
+import {
+  fetchIdentityStatus,
+  fileToBase64,
+  submitIdentityVerification,
+  type IdentityStatusDto,
+  type VerificationState,
+} from "@/lib/identityApi";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
 
-type KycStatusResponse = {
-  kycStatus: string;
-  kycTier: number;
-  demoKycEnabled?: boolean;
-};
+const COUNTRY_CODES = [
+  { code: "+1", label: "US +1" },
+  { code: "+44", label: "UK +44" },
+  { code: "+61", label: "AU +61" },
+  { code: "+49", label: "DE +49" },
+  { code: "+33", label: "FR +33" },
+  { code: "+91", label: "IN +91" },
+  { code: "+234", label: "NG +234" },
+  { code: "+27", label: "ZA +27" },
+];
 
-type IdentityBundle = {
-  data?: {
-    kycStatus: string;
-    kycTier: number;
-    documents: { docType: string; status: string; createdAt: string }[];
-  };
-};
+const fieldClass =
+  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-oove-blue focus:ring-2 focus:ring-oove-blue/20";
+const labelClass = "text-sm font-medium text-slate-800";
+
+function stateLabel(state: VerificationState): string {
+  if (state === "approved") return "Approved";
+  if (state === "pending") return "Pending review";
+  if (state === "rejected") return "Rejected";
+  return "Not submitted";
+}
 
 export function IdentityVerificationPage() {
   const { token } = useAuth();
   const { showToast } = useToast();
-  const [data, setData] = useState<KycStatusResponse | null>(null);
-  const [docs, setDocs] = useState<{ docType: string; status: string; createdAt: string }[]>([]);
+  const [status, setStatus] = useState<IdentityStatusDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  const [idDocType, setIdDocType] = useState<"passport" | "drivers_license" | "national_id">("passport");
+  const [idFile, setIdFile] = useState<File | null>(null);
+  const [ssnLast4, setSsnLast4] = useState("");
+  const [phoneCountryCode, setPhoneCountryCode] = useState("+1");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [stateProvince, setStateProvince] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [country, setCountry] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [nationality, setNationality] = useState("");
+  const [occupation, setOccupation] = useState("");
+  const [sourceOfFunds, setSourceOfFunds] = useState("");
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const [kycRes, idRes] = await Promise.all([
-        apiFetch("/api/kyc/status", { headers: { Authorization: `Bearer ${token}` } }),
-        apiFetch("/api/identity/status", { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-      const kycBody = (await kycRes.json().catch(() => ({}))) as KycStatusResponse & { error?: string };
-      if (!kycRes.ok) {
-        showToast(kycBody.error ?? "Could not load status");
-        setData(null);
-        setDocs([]);
-        return;
-      }
-      setData(kycBody);
-      const idBody = (await idRes.json().catch(() => ({}))) as IdentityBundle;
-      setDocs(idBody.data?.documents ?? []);
-    } catch {
-      showToast("Network error");
-      setData(null);
-      setDocs([]);
+      const data = await fetchIdentityStatus(token);
+      setStatus(data);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Could not load status");
+      setStatus(null);
     } finally {
       setLoading(false);
     }
@@ -56,29 +72,6 @@ export function IdentityVerificationPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  async function submitApplication() {
-    if (!token) return;
-    setSubmitting(true);
-    try {
-      const res = await apiFetch("/api/kyc/submit", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: "{}",
-      });
-      const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
-      if (!res.ok) {
-        showToast(body.error ?? "Submit failed");
-        return;
-      }
-      showToast(body.message ?? "Submitted");
-      await load();
-    } catch {
-      showToast("Network error");
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   async function demoVerify(tier: number) {
     if (!token) return;
@@ -103,14 +96,57 @@ export function IdentityVerificationPage() {
     }
   }
 
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    if (!idFile) {
+      showToast("Upload a government-issued ID");
+      return;
+    }
+    if (!/^\d{4}$/.test(ssnLast4)) {
+      showToast("Enter the last 4 digits of your SSN");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const idFileBase64 = await fileToBase64(idFile);
+      const result = await submitIdentityVerification(token, {
+        idDocType,
+        idFileName: idFile.name,
+        idContentType: idFile.type || "application/octet-stream",
+        idFileBase64,
+        ssnLast4,
+        phoneCountryCode,
+        phoneNumber: phoneNumber.trim(),
+        street: street.trim(),
+        city: city.trim(),
+        stateProvince: stateProvince.trim(),
+        postalCode: postalCode.trim(),
+        country: country.trim(),
+        ...(dateOfBirth.trim() ? { dateOfBirth: dateOfBirth.trim() } : {}),
+        ...(nationality.trim() ? { nationality: nationality.trim() } : {}),
+        ...(occupation.trim() ? { occupation: occupation.trim() } : {}),
+        ...(sourceOfFunds.trim() ? { sourceOfFunds: sourceOfFunds.trim() } : {}),
+      });
+      showToast(result.message, "success");
+      await load();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Submit failed", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const verificationState = status?.verificationState ?? "unverified";
+  const showForm = verificationState === "unverified" || verificationState === "rejected";
+  const registeredEmail = status?.email ?? "";
+
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Identity verification</h1>
         <p className="mt-3 text-slate-600">
-          Oove uses tiered identity checks to size borrow limits ($30,000–$100,000+ depending on tier and
-          collateral), similar in spirit to permissioned pools in the broader DeFi ecosystem. Complete verification
-          before requesting larger credit lines.
+          Complete verification to unlock borrowing tiers. Submit a government ID and required details for review.
         </p>
       </div>
 
@@ -118,93 +154,267 @@ export function IdentityVerificationPage() {
         <h2 className="text-lg font-semibold text-slate-900">Status</h2>
         {loading ? (
           <p className="mt-3 text-sm text-slate-500">Loading…</p>
-        ) : data ? (
+        ) : status ? (
           <dl className="mt-4 grid gap-2 text-sm">
             <div className="flex justify-between border-b border-slate-100 py-2">
               <dt className="text-slate-500">Verification state</dt>
-              <dd className="font-medium capitalize text-slate-900">{data.kycStatus}</dd>
+              <dd className="font-medium text-slate-900">{stateLabel(verificationState)}</dd>
             </div>
             <div className="flex justify-between py-2">
               <dt className="text-slate-500">Tier</dt>
-              <dd className="font-medium text-slate-900">{data.kycTier}</dd>
+              <dd className="font-medium text-slate-900">{status.kycTier}</dd>
             </div>
           </dl>
         ) : null}
 
-        {docs.length > 0 ? (
-          <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-4">
-            <h3 className="text-sm font-semibold text-slate-900">Uploaded documents</h3>
-            <ul className="mt-2 space-y-1 text-sm text-slate-600">
-              {docs.map((d) => (
-                <li key={`${d.docType}-${d.createdAt}`} className="flex justify-between gap-2">
-                  <span>{d.docType}</span>
-                  <span className="font-medium capitalize">{d.status}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {verificationState === "pending" ? (
+          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Verification submitted. We&apos;ll notify you once it&apos;s complete.
+          </p>
         ) : null}
 
-        {data?.kycStatus === "verified" ? (
-          <p className="mt-4 text-sm text-emerald-700">You are verified. Borrow caps follow your tier and supplied collateral.</p>
-        ) : (
-          <div className="mt-6 space-y-4">
-            <p className="text-sm text-slate-600">
-              Submit a verification request (government ID, proof of address). In production this connects to a KYC
-              vendor; here it marks your account as <strong>pending</strong> for review.
-            </p>
-            <button
-              type="button"
-              disabled={submitting || data?.kycStatus === "pending"}
-              onClick={() => void submitApplication()}
-              className="rounded-full bg-oove-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:brightness-105 disabled:opacity-40"
-            >
-              {data?.kycStatus === "pending" ? "Review pending" : "Submit verification request"}
-            </button>
-          </div>
-        )}
+        {verificationState === "approved" ? (
+          <p className="mt-4 text-sm text-emerald-700">
+            You are verified. Borrow caps follow your tier and supplied collateral.
+          </p>
+        ) : null}
 
-        {import.meta.env.DEV ? (
-          <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Developer</p>
-            <p className="mt-2 text-sm text-slate-600">
-              When test KYC mode is enabled on the API, you can simulate an approved identity for local testing.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => void demoVerify(1)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-white disabled:opacity-40"
+        {verificationState === "rejected" && status?.latestSubmission?.rejectionReason ? (
+          <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <strong>Rejection reason:</strong> {status.latestSubmission.rejectionReason}
+          </p>
+        ) : null}
+      </div>
+
+      {showForm ? (
+        <form onSubmit={(e) => void onSubmit(e)} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Verification form</h2>
+
+          <div>
+            <label className={labelClass} htmlFor="id-doc-type">
+              Government-issued ID
+            </label>
+            <select
+              id="id-doc-type"
+              className={`${fieldClass} mt-1.5`}
+              value={idDocType}
+              onChange={(e) => setIdDocType(e.target.value as typeof idDocType)}
+            >
+              <option value="passport">Passport</option>
+              <option value="drivers_license">Driver&apos;s license</option>
+              <option value="national_id">National ID</option>
+            </select>
+            <input
+              id="id-file"
+              type="file"
+              accept="image/*,.pdf"
+              className="mt-2 block w-full text-sm text-slate-600"
+              onChange={(e) => setIdFile(e.target.files?.[0] ?? null)}
+            />
+            <p className="mt-1 text-xs text-slate-500">JPEG, PNG, or PDF · max 6 MB</p>
+          </div>
+
+          <div>
+            <label className={labelClass} htmlFor="ssn-last4">
+              Last 4 digits of SSN
+            </label>
+            <input
+              id="ssn-last4"
+              inputMode="numeric"
+              maxLength={4}
+              pattern="\d{4}"
+              className={`${fieldClass} mt-1.5 font-mono`}
+              value={ssnLast4}
+              onChange={(e) => setSsnLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="1234"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-[8rem_1fr]">
+            <div>
+              <label className={labelClass} htmlFor="phone-code">
+                Country code
+              </label>
+              <select
+                id="phone-code"
+                className={`${fieldClass} mt-1.5`}
+                value={phoneCountryCode}
+                onChange={(e) => setPhoneCountryCode(e.target.value)}
               >
-                Quick verify · Tier 1 ($30k cap)
-              </button>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => void demoVerify(2)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-white disabled:opacity-40"
-              >
-                Quick verify · Tier 2 ($65k cap)
-              </button>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => void demoVerify(3)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-white disabled:opacity-40"
-              >
-                Quick verify · Tier 3 ($100k+ cap)
-              </button>
+                {COUNTRY_CODES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="phone-number">
+                Phone number
+              </label>
+              <input
+                id="phone-number"
+                type="tel"
+                className={`${fieldClass} mt-1.5`}
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                autoComplete="tel"
+              />
             </div>
           </div>
-        ) : null}
 
-        <p className="mt-8 text-center text-sm">
-          <Link to="/dashboard" className="font-semibold text-oove-blue hover:underline">
-            ← Back to home
-          </Link>
-        </p>
-      </div>
+          <div>
+            <label className={labelClass} htmlFor="verify-email">
+              Email
+            </label>
+            <input
+              id="verify-email"
+              type="email"
+              readOnly
+              value={registeredEmail}
+              className={`${fieldClass} mt-1.5 cursor-not-allowed bg-slate-50 text-slate-600`}
+            />
+            <p className="mt-1 text-xs text-slate-500">Registered account email (read only)</p>
+          </div>
+
+          <fieldset className="space-y-4">
+            <legend className="text-sm font-semibold text-slate-900">Full address</legend>
+            <div>
+              <label className={labelClass} htmlFor="street">
+                Street
+              </label>
+              <input id="street" className={`${fieldClass} mt-1.5`} value={street} onChange={(e) => setStreet(e.target.value)} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass} htmlFor="city">
+                  City
+                </label>
+                <input id="city" className={`${fieldClass} mt-1.5`} value={city} onChange={(e) => setCity(e.target.value)} />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="state-province">
+                  State / province
+                </label>
+                <input
+                  id="state-province"
+                  className={`${fieldClass} mt-1.5`}
+                  value={stateProvince}
+                  onChange={(e) => setStateProvince(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass} htmlFor="postal-code">
+                  Postal code
+                </label>
+                <input
+                  id="postal-code"
+                  className={`${fieldClass} mt-1.5`}
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="country">
+                  Country
+                </label>
+                <input
+                  id="country"
+                  className={`${fieldClass} mt-1.5`}
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset className="space-y-4 rounded-xl border border-slate-100 bg-slate-50/80 p-4">
+            <legend className="px-1 text-sm font-semibold text-slate-900">Additional KYC information</legend>
+            <div>
+              <label className={labelClass} htmlFor="dob">
+                Date of birth
+              </label>
+              <input
+                id="dob"
+                type="date"
+                className={`${fieldClass} mt-1.5`}
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="nationality">
+                Nationality
+              </label>
+              <input
+                id="nationality"
+                className={`${fieldClass} mt-1.5`}
+                value={nationality}
+                onChange={(e) => setNationality(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="occupation">
+                Occupation
+              </label>
+              <input
+                id="occupation"
+                className={`${fieldClass} mt-1.5`}
+                value={occupation}
+                onChange={(e) => setOccupation(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="source-of-funds">
+                Source of funds
+              </label>
+              <input
+                id="source-of-funds"
+                className={`${fieldClass} mt-1.5`}
+                value={sourceOfFunds}
+                onChange={(e) => setSourceOfFunds(e.target.value)}
+              />
+            </div>
+          </fieldset>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-full bg-oove-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:brightness-105 disabled:opacity-50 sm:w-auto"
+          >
+            {submitting ? "Submitting…" : "Submit verification"}
+          </button>
+        </form>
+      ) : null}
+
+      {import.meta.env.DEV ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Developer</p>
+          <p className="mt-2 text-sm text-slate-600">Quick-verify tiers when test KYC mode is enabled on the API.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[1, 2, 3].map((tier) => (
+              <button
+                key={tier}
+                type="button"
+                disabled={submitting}
+                onClick={() => void demoVerify(tier)}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-white disabled:opacity-40"
+              >
+                Quick verify · Tier {tier}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <p className="text-center text-sm">
+        <Link to="/dashboard" className="font-semibold text-oove-blue hover:underline">
+          ← Back to home
+        </Link>
+      </p>
     </div>
   );
 }

@@ -55,6 +55,13 @@ export async function setKycPending(userId: string): Promise<void> {
   );
 }
 
+export async function setKycRejected(userId: string): Promise<void> {
+  await pool.query(
+    `UPDATE users SET kyc_status = 'rejected', kyc_tier = 0 WHERE id = $1::uuid`,
+    [userId],
+  );
+}
+
 export async function setKycVerifiedDemo(userId: string, tier: number): Promise<void> {
   const t = Math.min(3, Math.max(1, Math.floor(tier)));
   await pool.query(

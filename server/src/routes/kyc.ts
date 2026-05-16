@@ -24,8 +24,9 @@ kycRouter.post("/submit", limiter, authenticateRequired, async (req, res) => {
     res.status(409).json({ error: "A verification request is already pending review." });
     return;
   }
-  await setKycPending(req.user!.id);
-  res.json({ message: "Verification submitted. Our team will review your documents.", kycStatus: "pending" });
+  res.status(400).json({
+    error: "Use the identity verification form at /verify-identity to submit your documents and details.",
+  });
 });
 
 const demoSchema = z.object({

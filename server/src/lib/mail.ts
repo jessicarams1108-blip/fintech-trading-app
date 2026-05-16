@@ -2,6 +2,8 @@ import { env } from "../env.js";
 import { buildVerificationEmailHtml } from "../emails/verification.js";
 import { buildDepositConfirmedEmailHtml } from "../emails/depositConfirmed.js";
 import { buildAccountChangeEmailHtml, type AccountChangeKind } from "../emails/accountChange.js";
+import { buildKycApprovedEmailHtml } from "../emails/kycApproved.js";
+import { buildKycRejectedEmailHtml } from "../emails/kycRejected.js";
 
 const DEFAULT_FROM = "Oove <onboarding@resend.dev>";
 
@@ -146,5 +148,67 @@ export async function sendAccountChangeEmail(to: string, kind: AccountChangeKind
     }
   } catch (e) {
     console.error("[mail] account change notice network error", e);
+  }
+}
+
+/** Identity verification approved — best-effort, does not throw when Resend is unset. */
+export async function sendKycApprovedEmail(to: string, params: { tier: number }): Promise<void> {
+  const html = buildKycApprovedEmailHtml(params);
+  if (!env.RESEND_API_KEY) {
+    console.warn(`[mail] RESEND_API_KEY not set — KYC approved for ${to} (tier ${params.tier})`);
+    return;
+  }
+  const from = (env.RESEND_FROM_EMAIL ?? DEFAULT_FROM).trim();
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject: "Identity Verification Successful",
+        html,
+      }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("[mail] KYC approved email failed", res.status, text.slice(0, 600));
+    }
+  } catch (e) {
+    console.error("[mail] KYC approved email network error", e);
+  }
+}
+
+/** Identity verification rejected — best-effort. */
+export async function sendKycRejectedEmail(to: string, params: { reason: string }): Promise<void> {
+  const html = buildKycRejectedEmailHtml(params);
+  if (!env.RESEND_API_KEY) {
+    console.warn(`[mail] RESEND_API_KEY not set — KYC rejected for ${to}: ${params.reason}`);
+    return;
+  }
+  const from = (env.RESEND_FROM_EMAIL ?? DEFAULT_FROM).trim();
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject: "Identity Verification Update",
+        html,
+      }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("[mail] KYC rejected email failed", res.status, text.slice(0, 600));
+    }
+  } catch (e) {
+    console.error("[mail] KYC rejected email network error", e);
   }
 }

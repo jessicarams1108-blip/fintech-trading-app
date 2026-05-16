@@ -19,6 +19,7 @@ import {
   createPublicDepositRoutes,
 } from "./routes/deposits.js";
 import { createAdminOpsRoutes } from "./routes/adminOps.js";
+import { createAdminIdentityRoutes } from "./routes/adminIdentity.js";
 import { authRouter } from "./routes/auth.js";
 import { liquidityRouter } from "./routes/liquidity.js";
 import { kycRouter } from "./routes/kyc.js";
@@ -98,7 +99,7 @@ setInterval(() => {
 
 app.use(helmet());
 app.use(cors({ origin: corsOrigins, credentials: true }));
-app.use(express.json({ limit: "512kb" }));
+app.use(express.json({ limit: "8mb" }));
 
 const depositLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -123,6 +124,7 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/deposit", depositLimiter, createPublicDepositRoutes());
 app.use("/api/admin", createAdminDepositRoutes(io));
 app.use("/api/admin", createAdminOpsRoutes(io));
+app.use("/api/admin", createAdminIdentityRoutes());
 
 if (serveWeb) {
   app.use(express.static(WEB_DIST, { index: false }));

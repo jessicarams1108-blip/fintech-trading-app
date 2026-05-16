@@ -5,6 +5,7 @@ import { AppShell } from "@/layout/AppShell";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { DepositPage } from "@/pages/DepositPage";
 import { AdminDepositsPage } from "@/pages/AdminDepositsPage";
+import { AdminIdentityVerificationsPage } from "@/pages/AdminIdentityVerificationsPage";
 import { AdminConsolePage } from "@/pages/AdminConsolePage";
 import { LoginPage } from "@/pages/LoginPage";
 import { OoveLandingPage } from "@/pages/OoveLandingPage";
@@ -54,6 +55,14 @@ export default function App() {
             element={
               <AdminRoute>
                 <AdminDepositsPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/identity"
+            element={
+              <AdminRoute>
+                <AdminIdentityVerificationsPage />
               </AdminRoute>
             }
           />
