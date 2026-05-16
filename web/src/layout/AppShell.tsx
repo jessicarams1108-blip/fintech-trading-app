@@ -2,6 +2,8 @@ import { Link, NavLink, Outlet } from "react-router-dom";
 import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/state/AuthContext";
+import { useTheme } from "@/state/ThemeContext";
+import { usePreferences, type DisplayCurrency, type DisplayLanguage } from "@/state/PreferencesContext";
 import { DepositSocketBridge } from "@/components/DepositSocketBridge";
 
 type NavDescriptor = {
@@ -10,27 +12,23 @@ type NavDescriptor = {
   adminOnly?: true;
 };
 
-/** Sidebar — admin shortcuts only (Home is under profile menu). */
-const primaryNav: NavDescriptor[] = [
+/** Main app routes — open from the hamburger sidebar. */
+const sidebarMainNav: NavDescriptor[] = [
+  { to: "/dashboard", label: "Home" },
+  { to: "/borrow", label: "Borrow" },
+  { to: "/portfolio", label: "Portfolio" },
+  { to: "/watchlist", label: "Watchlist" },
+  { to: "/history", label: "History" },
+];
+
+const sidebarAdminNav: NavDescriptor[] = [
   { to: "/admin/console", label: "Admin · Console", adminOnly: true },
   { to: "/admin/deposits", label: "Admin · Deposits", adminOnly: true },
 ];
 
-const profileNav: NavDescriptor[] = [
-  { to: "/dashboard", label: "Home" },
-  { to: "/borrow", label: "Borrow" },
-  { to: "/portfolio", label: "Portfolio" },
-  { to: "/transfers", label: "Transfers" },
-  { to: "/deposit", label: "Supply" },
-  { to: "/watchlist", label: "Watchlist" },
-  { to: "/history", label: "History" },
-  { to: "/verify-identity", label: "Identity" },
-  { to: "/settings", label: "Settings" },
-];
-
 function HamburgerIcon({ open }: { open: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-slate-800" aria-hidden>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-slate-800 dark:text-slate-200" aria-hidden>
       {open ? (
         <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       ) : (
@@ -44,6 +42,8 @@ function HamburgerIcon({ open }: { open: boolean }) {
 
 export function AppShell() {
   const { user, logout, isAdmin } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const { currency, setCurrency, language, setLanguage } = usePreferences();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -58,8 +58,8 @@ export function AppShell() {
     return () => mql.removeEventListener("change", onChange);
   }, []);
 
-  const primaryItems = useMemo(
-    () => primaryNav.filter((item) => (item.adminOnly ? isAdmin : true)),
+  const adminItems = useMemo(
+    () => sidebarAdminNav.filter((item) => (item.adminOnly ? isAdmin : true)),
     [isAdmin],
   );
 
@@ -89,8 +89,20 @@ export function AppShell() {
     };
   }, [profileOpen]);
 
+  const menuShell = "border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
+  const menuLabel = "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400";
+  const menuSelect =
+    "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100";
+  const themeBtn = (active: boolean) =>
+    clsx(
+      "flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold transition",
+      active
+        ? "bg-oove-blue text-white"
+        : "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700",
+    );
+
   return (
-    <div className="flex min-h-screen flex-col bg-white text-slate-900 lg:flex-row">
+    <div className="flex min-h-screen flex-col bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 lg:flex-row">
       {sidebarOpen ? (
         <button
           type="button"
@@ -103,13 +115,13 @@ export function AppShell() {
       <aside
         id="app-sidebar-nav"
         className={clsx(
-          "fixed inset-y-0 left-0 z-40 flex w-56 shrink-0 flex-col gap-6 border-r border-slate-200 bg-white p-5 transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-56 shrink-0 flex-col gap-6 border-r border-slate-200 bg-white p-5 transition-transform duration-200 ease-out dark:border-slate-800 dark:bg-slate-900 lg:static lg:z-auto lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none lg:pointer-events-auto lg:hidden",
         )}
       >
         <Link
           to="/dashboard"
-          className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900 no-underline"
+          className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900 no-underline dark:text-slate-50"
           onClick={closeSidebarMobile}
         >
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-oove-blue text-xs font-black text-white">
@@ -117,54 +129,55 @@ export function AppShell() {
           </span>
           Oove
         </Link>
+
         <nav className="flex flex-col gap-1 text-sm font-medium">
-          {primaryItems.map((item) => (
+          {sidebarMainNav.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 clsx(
-                  "rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100",
-                  isActive && "bg-slate-100 text-accent",
+                  "rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800",
+                  isActive && "bg-slate-100 text-accent dark:bg-slate-800 dark:text-white",
                 )
               }
+              end={item.to === "/dashboard"}
               onClick={closeSidebarMobile}
             >
               {item.label}
             </NavLink>
           ))}
-          {primaryItems.length === 0 ? (
-            <p className="px-3 py-2 text-xs leading-relaxed text-slate-500">
-              Use your profile menu (top right) for Home and every page.
-            </p>
+
+          {adminItems.length > 0 ? (
+            <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Admin
+              </p>
+              {adminItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    clsx(
+                      "rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800",
+                      isActive && "bg-slate-100 text-accent dark:bg-slate-800 dark:text-white",
+                    )
+                  }
+                  onClick={closeSidebarMobile}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
           ) : null}
         </nav>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col bg-white">
-        {primaryItems.length > 0 ? (
-          <div className="flex gap-2 overflow-x-auto border-b border-slate-200 bg-white px-3 py-2 text-xs font-semibold lg:hidden">
-            {primaryItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  clsx(
-                    "rounded-full px-3 py-1 whitespace-nowrap",
-                    isActive ? "bg-accent text-white" : "bg-slate-100 text-slate-700",
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </div>
-        ) : null}
-
-        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-3 py-3 sm:px-4">
+      <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-slate-950">
+        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
           <button
             type="button"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             aria-expanded={sidebarOpen}
             aria-controls="app-sidebar-nav"
             aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
@@ -174,14 +187,16 @@ export function AppShell() {
           </button>
 
           <div className="hidden min-w-0 flex-1 sm:block">
-            <p className="truncate text-sm font-semibold text-slate-800">Oove</p>
-            <p className="truncate text-xs text-slate-500">Menu toggles the sidebar · Home is in your profile</p>
+            <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Oove</p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+              Menu: Home, Borrow, Portfolio, Watchlist, History
+            </p>
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-2 sm:flex-none sm:flex-initial">
             <button
               type="button"
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700"
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
               aria-label="Notifications"
             >
               🔔
@@ -193,56 +208,87 @@ export function AppShell() {
                 onClick={() => setProfileOpen((o) => !o)}
                 aria-expanded={profileOpen}
                 aria-haspopup="true"
-                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1 pl-1 pr-2 transition hover:bg-slate-50 sm:pr-3"
+                aria-label={user?.email ? `Open account menu, signed in as ${user.email}` : "Open account menu"}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:hover:bg-slate-800"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-purple-600 text-xs font-bold text-white">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent to-purple-600 text-xs font-bold text-white">
                   {user?.email?.slice(0, 2).toUpperCase() ?? "--"}
                 </div>
-                <div className="hidden min-w-0 max-w-[10rem] flex-col items-start text-left sm:flex">
-                  <span className="truncate text-xs font-semibold text-slate-900">
-                    {user?.email?.split("@")[0] ?? "Profile"}
-                  </span>
-                  <span className="truncate text-[10px] text-slate-500">Account menu</span>
-                </div>
-                <span className="hidden text-slate-400 sm:inline" aria-hidden>
-                  ▾
-                </span>
               </button>
 
               {profileOpen ? (
                 <div
-                  className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 text-sm shadow-lg"
+                  className={clsx("absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-xl py-2 text-sm", menuShell)}
                   role="menu"
                 >
-                  <div className="border-b border-slate-100 px-3 py-2">
-                    <p className="truncate text-xs font-medium text-slate-500">Signed in as</p>
-                    <p className="truncate text-sm font-semibold text-slate-900">{user?.email ?? "—"}</p>
-                  </div>
-                  <div className="py-1">
-                    {profileNav.map((item) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        role="menuitem"
-                        onClick={() => setProfileOpen(false)}
-                        className={({ isActive }) =>
-                          clsx(
-                            "block px-3 py-2.5 font-medium text-slate-800 hover:bg-slate-50",
-                            isActive && "bg-slate-100 text-accent",
-                          )
-                        }
-                        end={item.to === "/dashboard"}
+                  <div className="space-y-3 border-b border-slate-100 px-3 pb-3 dark:border-slate-800">
+                    <div>
+                      <span className={menuLabel}>Theme</span>
+                      <div className="flex gap-1">
+                        <button type="button" className={themeBtn(theme === "light")} onClick={() => setTheme("light")}>
+                          Light
+                        </button>
+                        <button type="button" className={themeBtn(theme === "dark")} onClick={() => setTheme("dark")}>
+                          Dark
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className={menuLabel} htmlFor="pref-currency">
+                        Currency
+                      </label>
+                      <select
+                        id="pref-currency"
+                        className={menuSelect}
+                        value={currency}
+                        onChange={(e) => setCurrency(e.target.value as DisplayCurrency)}
                       >
-                        {item.label}
-                      </NavLink>
-                    ))}
+                        <option value="USD">USD — US dollar</option>
+                        <option value="EUR">EUR — Euro</option>
+                        <option value="GBP">GBP — British pound</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={menuLabel} htmlFor="pref-language">
+                        Language
+                      </label>
+                      <select
+                        id="pref-language"
+                        className={menuSelect}
+                        value={language}
+                        onChange={(e) => setLanguage(e.target.value as DisplayLanguage)}
+                      >
+                        <option value="en">English</option>
+                        <option value="es">Español</option>
+                        <option value="fr">Français</option>
+                      </select>
+                    </div>
                   </div>
-                  <div className="border-t border-slate-100 py-1">
+
+                  <div className="py-1">
+                    <NavLink
+                      to="/settings"
+                      role="menuitem"
+                      onClick={() => setProfileOpen(false)}
+                      className={({ isActive }) =>
+                        clsx(
+                          "block px-3 py-2.5 font-medium hover:bg-slate-50 dark:hover:bg-slate-800",
+                          isActive
+                            ? "bg-slate-100 text-accent dark:bg-slate-800 dark:text-white"
+                            : "text-slate-800 dark:text-slate-200",
+                        )
+                      }
+                    >
+                      Settings
+                    </NavLink>
+                  </div>
+
+                  <div className="border-t border-slate-100 py-1 dark:border-slate-800">
                     {user ? (
                       <button
                         type="button"
                         role="menuitem"
-                        className="w-full px-3 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
+                        className="w-full px-3 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
                         onClick={() => {
                           setProfileOpen(false);
                           logout();
@@ -254,7 +300,7 @@ export function AppShell() {
                       <NavLink
                         to="/login"
                         role="menuitem"
-                        className="block px-3 py-2.5 font-semibold text-oove-blue hover:bg-slate-50"
+                        className="block px-3 py-2.5 font-semibold text-oove-blue hover:bg-slate-50 dark:hover:bg-slate-800"
                         onClick={() => setProfileOpen(false)}
                       >
                         Log in
@@ -266,7 +312,7 @@ export function AppShell() {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-auto bg-white p-4 md:p-8">
+        <main className="flex-1 overflow-auto bg-white p-4 dark:bg-slate-950 md:p-8">
           <DepositSocketBridge />
           <Outlet />
         </main>

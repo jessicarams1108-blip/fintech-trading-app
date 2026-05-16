@@ -8,6 +8,7 @@ import { BalanceVisibilityProvider } from "./state/BalanceVisibilityContext";
 import { AuthProvider } from "./state/AuthContext";
 import { ToastProvider } from "./state/ToastContext";
 import { QueryProvider } from "./providers/QueryProvider";
+import { PreferencesProvider } from "./state/PreferencesContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -16,9 +17,11 @@ createRoot(document.getElementById("root")!).render(
         <BalanceVisibilityProvider>
           <QueryProvider>
             <ThemeProvider>
-              <ToastProvider>
-                <App />
-              </ToastProvider>
+              <PreferencesProvider>
+                <ToastProvider>
+                  <App />
+                </ToastProvider>
+              </PreferencesProvider>
             </ThemeProvider>
           </QueryProvider>
         </BalanceVisibilityProvider>
