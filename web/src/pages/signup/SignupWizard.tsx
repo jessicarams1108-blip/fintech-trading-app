@@ -148,7 +148,7 @@ export function SignupWizard() {
         return;
       }
       localStorage.setItem(PENDING_USER_ID_KEY, userId);
-      saveRegisteredProfile({
+      saveRegisteredProfile(userId, {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         username: form.username.trim(),

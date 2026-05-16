@@ -88,6 +88,7 @@ export function SettingsPage() {
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [profileSavedFlash, setProfileSavedFlash] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
 
   const [curPw, setCurPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -100,7 +101,7 @@ export function SettingsPage() {
     queryFn: () => fetchProfile(token!),
   });
 
-  const registeredProfile = useMemo(() => readRegisteredProfile(), [profileQ.dataUpdatedAt, user?.id]);
+  const registeredProfile = useMemo(() => readRegisteredProfile(user?.id), [profileQ.dataUpdatedAt, user?.id]);
 
   const resolvedProfile = useMemo(
     () => resolveProfileFields(profileQ.data, user, registeredProfile),
@@ -117,7 +118,7 @@ export function SettingsPage() {
     if (backfillAttempted.current || !token || !profileQ.isSuccess || !registeredProfile) return;
     const apiEmpty = !profileQ.data?.fullName?.trim() && !profileQ.data?.username?.trim();
     if (!apiEmpty) {
-      clearRegisteredProfile();
+      clearRegisteredProfile(user?.id);
       return;
     }
     backfillAttempted.current = true;
@@ -134,13 +135,13 @@ export function SettingsPage() {
           firstName: data.firstName,
           lastName: data.lastName,
         });
-        clearRegisteredProfile();
+        clearRegisteredProfile(user?.id);
         void qc.invalidateQueries({ queryKey: ["settings", "profile"] });
       })
       .catch(() => {
         backfillAttempted.current = false;
       });
-  }, [token, profileQ.isSuccess, profileQ.data, registeredProfile, patchUser, qc]);
+  }, [token, profileQ.isSuccess, profileQ.data, registeredProfile, patchUser, qc, user?.id]);
 
   const sessions = useQuery({
     queryKey: ["settings", "sessions", token],
@@ -176,7 +177,8 @@ export function SettingsPage() {
         firstName: data.firstName,
         lastName: data.lastName,
       });
-      clearRegisteredProfile();
+      clearRegisteredProfile(user?.id);
+      setEditingProfile(false);
       setProfileSavedFlash(true);
       window.setTimeout(() => setProfileSavedFlash(false), 2500);
       showToast("Profile saved. A confirmation email was sent if mail is configured.", "success");
@@ -224,6 +226,9 @@ export function SettingsPage() {
   });
 
   const displayEmail = profileQ.data?.email ?? user?.email ?? "—";
+  const hasRegistration = Boolean(resolvedProfile.fullName || resolvedProfile.username);
+  const readOnlyFieldClass =
+    "mt-1.5 cursor-not-allowed bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-200";
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "account", label: "Account" },
@@ -283,12 +288,20 @@ export function SettingsPage() {
                   </label>
                   <input
                     id="settings-full-name"
-                    className={clsx(fieldClass(), "mt-1.5")}
-                    value={fullName}
+                    className={clsx(
+                      fieldClass(),
+                      !editingProfile && hasRegistration ? readOnlyFieldClass : "mt-1.5",
+                    )}
+                    value={fullName || resolvedProfile.fullName}
+                    readOnly={!editingProfile && hasRegistration}
+                    aria-readonly={!editingProfile && hasRegistration}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder={resolvedProfile.fullName || "Your name"}
+                    placeholder="Your name"
                     autoComplete="name"
                   />
+                  {!editingProfile && hasRegistration ? (
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">From your registration</p>
+                  ) : null}
                 </div>
                 <div>
                   <label className={labelClass()} htmlFor="settings-username">
@@ -296,16 +309,42 @@ export function SettingsPage() {
                   </label>
                   <input
                     id="settings-username"
-                    className={clsx(fieldClass(), "mt-1.5 font-mono")}
-                    value={username}
+                    className={clsx(
+                      fieldClass(),
+                      !editingProfile && hasRegistration ? readOnlyFieldClass : "mt-1.5 font-mono",
+                    )}
+                    value={username || resolvedProfile.username}
+                    readOnly={!editingProfile && hasRegistration}
+                    aria-readonly={!editingProfile && hasRegistration}
                     onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
-                    placeholder={resolvedProfile.username || "your_username"}
+                    placeholder="your_username"
                     autoComplete="username"
                   />
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Letters, numbers, and underscores · 3–32 characters
+                    {!editingProfile && hasRegistration
+                      ? "From your registration"
+                      : "Letters, numbers, and underscores · 3–32 characters"}
                   </p>
                 </div>
+                {hasRegistration ? (
+                  <button
+                    type="button"
+                    className="text-sm font-semibold text-oove-blue hover:underline"
+                    onClick={() => {
+                      if (editingProfile) {
+                        setEditingProfile(false);
+                        setFullName(resolvedProfile.fullName);
+                        setUsername(resolvedProfile.username);
+                      } else {
+                        setFullName(resolvedProfile.fullName);
+                        setUsername(resolvedProfile.username);
+                        setEditingProfile(true);
+                      }
+                    }}
+                  >
+                    {editingProfile ? "Show registration details" : "Change full name or username"}
+                  </button>
+                ) : null}
                 <div>
                   <label className={labelClass()} htmlFor="settings-email">
                     Email
@@ -319,18 +358,20 @@ export function SettingsPage() {
                   />
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Signed-in account email (read only)</p>
                 </div>
-                <button
-                  type="button"
-                  disabled={saveProfile.isPending || !token}
-                  onClick={() => saveProfile.mutate()}
-                  className={clsx(
-                    "rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition",
-                    saveProfile.isPending ? "bg-oove-blue/70" : "bg-oove-blue hover:brightness-105",
-                    profileSavedFlash && !saveProfile.isPending && "ring-2 ring-emerald-400 ring-offset-2 dark:ring-offset-slate-900",
-                  )}
-                >
-                  {saveProfile.isPending ? "Saving…" : profileSavedFlash ? "Saved ✓" : "Save profile"}
-                </button>
+                {(editingProfile || !hasRegistration) && (
+                  <button
+                    type="button"
+                    disabled={saveProfile.isPending || !token}
+                    onClick={() => saveProfile.mutate()}
+                    className={clsx(
+                      "rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition",
+                      saveProfile.isPending ? "bg-oove-blue/70" : "bg-oove-blue hover:brightness-105",
+                      profileSavedFlash && !saveProfile.isPending && "ring-2 ring-emerald-400 ring-offset-2 dark:ring-offset-slate-900",
+                    )}
+                  >
+                    {saveProfile.isPending ? "Saving…" : profileSavedFlash ? "Saved ✓" : "Save profile"}
+                  </button>
+                )}
               </div>
             )}
           </SettingsCard>

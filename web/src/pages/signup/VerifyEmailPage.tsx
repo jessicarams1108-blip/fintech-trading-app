@@ -5,6 +5,7 @@ import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
 
 import { PENDING_DEV_VERIFICATION_CODE_KEY, PENDING_EMAIL_SESSION_KEY, PENDING_USER_ID_KEY } from "@/lib/pendingSignup";
+import { profileFromAuthUser, saveRegisteredProfile } from "@/lib/registeredProfile";
 
 function maskEmail(email: string): string {
   const [local, domain] = email.trim().split("@");
@@ -174,6 +175,8 @@ export function VerifyEmailPage() {
       localStorage.removeItem(PENDING_USER_ID_KEY);
       sessionStorage.removeItem(PENDING_EMAIL_SESSION_KEY);
       sessionStorage.removeItem(PENDING_DEV_VERIFICATION_CODE_KEY);
+      const reg = profileFromAuthUser(data.user);
+      if (reg) saveRegisteredProfile(data.user.id, reg);
       applySession(data.token, data.user);
       navigate("/dashboard", { replace: true, state: { welcomeSignup: true } });
     } catch {

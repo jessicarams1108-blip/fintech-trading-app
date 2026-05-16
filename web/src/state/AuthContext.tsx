@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { API_ORIGIN, apiFetch } from "@/lib/apiBase";
+import { profileFromAuthUser, saveRegisteredProfile } from "@/lib/registeredProfile";
 
 export type AuthUser = {
   id: string;
@@ -110,12 +111,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, body.token);
     setToken(body.token);
     setUser(body.user);
+    const reg = profileFromAuthUser(body.user);
+    if (reg) saveRegisteredProfile(body.user.id, reg);
   }, []);
 
   const applySession = useCallback((nextToken: string, nextUser: AuthUser) => {
     localStorage.setItem(STORAGE_KEY, nextToken);
     setToken(nextToken);
     setUser(nextUser);
+    const reg = profileFromAuthUser(nextUser);
+    if (reg) saveRegisteredProfile(nextUser.id, reg);
   }, []);
 
   const patchUser = useCallback((patch: Partial<AuthUser>) => {
