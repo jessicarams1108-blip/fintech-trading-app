@@ -280,10 +280,6 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Portfolio</p>
           <h2 className="text-2xl font-semibold text-slate-900">Holdings & performance</h2>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            Your totals use live spot prices. Below, browse market-wide price, capitalization, volume, and history like
-            CoinMarketCap — refreshed automatically.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link

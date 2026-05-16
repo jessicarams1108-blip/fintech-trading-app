@@ -156,13 +156,6 @@ export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-slate-900">Markets</h3>
-          <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-500">
-            <strong className="font-semibold text-slate-700">Price, market cap, volume &amp; 24h change</strong> use{" "}
-            <strong className="font-semibold text-slate-700">CoinMarketCap</strong> when your API has{" "}
-            <code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">COINMARKETCAP_API_KEY</code>
-            ; otherwise CoinGecko. The <strong className="font-semibold text-slate-700">chart</strong> uses CoinGecko
-            historical prices (updated automatically).
-          </p>
         </div>
         <div className="flex flex-wrap gap-1">
           {MARKET_TAB_SYMBOLS.map((s) => (
