@@ -263,6 +263,26 @@ export function formatUserFullName(firstName: string | null, lastName: string | 
   return [firstName, lastName].filter((p) => p && p.trim().length > 0).join(" ").trim();
 }
 
+export type UserProfilePayload = {
+  id: string;
+  email: string;
+  username: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  fullName: string;
+};
+
+export function toUserProfile(row: Pick<UserRow, "id" | "email" | "username" | "first_name" | "last_name">): UserProfilePayload {
+  return {
+    id: row.id,
+    email: row.email,
+    username: row.username,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    fullName: formatUserFullName(row.first_name, row.last_name),
+  };
+}
+
 export function parseFullName(fullName: string): { firstName: string | null; lastName: string | null } {
   const trimmed = fullName.trim();
   if (!trimmed) return { firstName: null, lastName: null };

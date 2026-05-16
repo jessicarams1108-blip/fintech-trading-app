@@ -12,6 +12,10 @@ import { API_ORIGIN, apiFetch } from "@/lib/apiBase";
 export type AuthUser = {
   id: string;
   email: string;
+  username?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  fullName?: string;
 };
 
 type AuthContextValue = {
@@ -20,6 +24,7 @@ type AuthContextValue = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   applySession: (token: string, user: AuthUser) => void;
+  patchUser: (patch: Partial<AuthUser>) => void;
   logout: () => void;
   isAdmin: boolean;
 };
@@ -113,6 +118,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(nextUser);
   }, []);
 
+  const patchUser = useCallback((patch: Partial<AuthUser>) => {
+    setUser((current) => (current ? { ...current, ...patch } : current));
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     setToken(null);
@@ -132,10 +141,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login,
       applySession,
+      patchUser,
       logout,
       isAdmin,
     }),
-    [user, token, loading, login, applySession, logout, isAdmin],
+    [user, token, loading, login, applySession, patchUser, logout, isAdmin],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

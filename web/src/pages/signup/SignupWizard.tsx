@@ -6,6 +6,7 @@ import {
   PENDING_EMAIL_SESSION_KEY,
   PENDING_USER_ID_KEY,
 } from "@/lib/pendingSignup";
+import { saveRegisteredProfile } from "@/lib/registeredProfile";
 import { useToast } from "@/state/ToastContext";
 
 type Step = "email" | "password" | "details" | "terms";
@@ -147,6 +148,12 @@ export function SignupWizard() {
         return;
       }
       localStorage.setItem(PENDING_USER_ID_KEY, userId);
+      saveRegisteredProfile({
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        username: form.username.trim(),
+        fullName: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
+      });
       sessionStorage.setItem(PENDING_EMAIL_SESSION_KEY, form.email.trim());
       if (typeof payload.devVerificationCode === "string" && /^\d{6}$/.test(payload.devVerificationCode)) {
         sessionStorage.setItem(PENDING_DEV_VERIFICATION_CODE_KEY, payload.devVerificationCode);

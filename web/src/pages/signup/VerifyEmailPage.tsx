@@ -154,7 +154,14 @@ export function VerifyEmailPage() {
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
         token?: string;
-        user?: { id: string; email: string };
+        user?: {
+          id: string;
+          email: string;
+          username?: string | null;
+          firstName?: string | null;
+          lastName?: string | null;
+          fullName?: string;
+        };
       };
       if (!res.ok) {
         showToast(data.error ?? "Verification failed");

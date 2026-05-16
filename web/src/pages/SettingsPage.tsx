@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { useAuth } from "@/state/AuthContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
@@ -8,6 +8,8 @@ import { useTheme } from "@/state/ThemeContext";
 import { usePreferences, type DisplayCurrency, type DisplayLanguage } from "@/state/PreferencesContext";
 import { apiFetch } from "@/lib/apiBase";
 import { changePassword, fetchProfile, patchProfile } from "@/lib/settingsApi";
+import { resolveProfileFields } from "@/lib/profileDisplay";
+import { clearRegisteredProfile, readRegisteredProfile } from "@/lib/registeredProfile";
 
 type Tab = "account" | "prefs" | "security";
 
@@ -77,7 +79,7 @@ function ThemeToggle() {
 }
 
 export function SettingsPage() {
-  const { token, user } = useAuth();
+  const { token, user, patchUser } = useAuth();
   const { showToast } = useToast();
   const { currency, setCurrency, language, setLanguage } = usePreferences();
   const qc = useQueryClient();
@@ -98,11 +100,47 @@ export function SettingsPage() {
     queryFn: () => fetchProfile(token!),
   });
 
+  const registeredProfile = useMemo(() => readRegisteredProfile(), [profileQ.dataUpdatedAt, user?.id]);
+
+  const resolvedProfile = useMemo(
+    () => resolveProfileFields(profileQ.data, user, registeredProfile),
+    [profileQ.data, user, registeredProfile],
+  );
+
   useEffect(() => {
-    if (!profileQ.data) return;
-    setFullName(profileQ.data.fullName);
-    setUsername(profileQ.data.username ?? "");
-  }, [profileQ.data]);
+    setFullName(resolvedProfile.fullName);
+    setUsername(resolvedProfile.username);
+  }, [resolvedProfile.fullName, resolvedProfile.username]);
+
+  const backfillAttempted = useRef(false);
+  useEffect(() => {
+    if (backfillAttempted.current || !token || !profileQ.isSuccess || !registeredProfile) return;
+    const apiEmpty = !profileQ.data?.fullName?.trim() && !profileQ.data?.username?.trim();
+    if (!apiEmpty) {
+      clearRegisteredProfile();
+      return;
+    }
+    backfillAttempted.current = true;
+    void patchProfile(token, {
+      fullName: registeredProfile.fullName,
+      username: registeredProfile.username,
+    })
+      .then((data) => {
+        setFullName(data.fullName);
+        setUsername(data.username ?? "");
+        patchUser({
+          fullName: data.fullName,
+          username: data.username,
+          firstName: data.firstName,
+          lastName: data.lastName,
+        });
+        clearRegisteredProfile();
+        void qc.invalidateQueries({ queryKey: ["settings", "profile"] });
+      })
+      .catch(() => {
+        backfillAttempted.current = false;
+      });
+  }, [token, profileQ.isSuccess, profileQ.data, registeredProfile, patchUser, qc]);
 
   const sessions = useQuery({
     queryKey: ["settings", "sessions", token],
@@ -132,6 +170,13 @@ export function SettingsPage() {
     onSuccess: (data) => {
       setFullName(data.fullName);
       setUsername(data.username ?? "");
+      patchUser({
+        fullName: data.fullName,
+        username: data.username,
+        firstName: data.firstName,
+        lastName: data.lastName,
+      });
+      clearRegisteredProfile();
       setProfileSavedFlash(true);
       window.setTimeout(() => setProfileSavedFlash(false), 2500);
       showToast("Profile saved. A confirmation email was sent if mail is configured.", "success");
@@ -216,10 +261,10 @@ export function SettingsPage() {
           <SettingsCard>
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Profile</h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Update your display name and username. Email cannot be changed here.
+              Your full name and username from signup appear below. Email cannot be changed here.
             </p>
 
-            {profileQ.isLoading ? (
+            {profileQ.isLoading && !resolvedProfile.fullName && !resolvedProfile.username ? (
               <div className="mt-6 space-y-4">
                 <SkeletonLine className="h-4 w-24" />
                 <SkeletonLine className="h-10 w-full" />
@@ -241,7 +286,7 @@ export function SettingsPage() {
                     className={clsx(fieldClass(), "mt-1.5")}
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Your name"
+                    placeholder={resolvedProfile.fullName || "Your name"}
                     autoComplete="name"
                   />
                 </div>
@@ -254,7 +299,7 @@ export function SettingsPage() {
                     className={clsx(fieldClass(), "mt-1.5 font-mono")}
                     value={username}
                     onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
-                    placeholder="your_username"
+                    placeholder={resolvedProfile.username || "your_username"}
                     autoComplete="username"
                   />
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
