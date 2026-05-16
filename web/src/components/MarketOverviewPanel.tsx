@@ -83,21 +83,35 @@ export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }
 
   const chartData = useMemo(() => {
     const pts = q.data?.history ?? [];
-    return pts.map((p) => ({
-      time: p.time as Time,
-      value: p.price,
-    }));
+    const sorted = [...pts].sort((a, b) => a.time - b.time);
+    const out: { time: Time; value: number }[] = [];
+    for (const p of sorted) {
+      if (!(p.price > 0)) continue;
+      const t = p.time as Time;
+      const prev = out[out.length - 1];
+      if (prev && prev.time === t) out[out.length - 1] = { time: t, value: p.price };
+      else out.push({ time: t, value: p.price });
+    }
+    return out;
   }, [q.data?.history]);
 
   useEffect(() => {
-    if (!chartRef.current) return;
     const el = chartRef.current;
+    if (!el) return;
+    el.replaceChildren();
+
+    if (chartData.length === 0) return;
+
     const w = Math.max(el.clientWidth, 280);
     const h = chartHeight;
     const chart = createChart(el, {
       width: w,
       height: h,
-      layout: { background: { type: ColorType.Solid, color: "#ffffff" }, textColor: "#475569" },
+      layout: {
+        background: { type: ColorType.Solid, color: "#ffffff" },
+        textColor: "#475569",
+        attributionLogo: false,
+      },
       grid: {
         vertLines: { color: "rgba(148, 163, 184, 0.2)" },
         horzLines: { color: "rgba(148, 163, 184, 0.2)" },
@@ -143,9 +157,11 @@ export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }
         <div>
           <h3 className="text-lg font-semibold text-slate-900">Markets</h3>
           <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-500">
-            CoinMarketCap-style snapshot when{" "}
-            <code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">COINMARKETCAP_API_KEY</code> is set on the
-            API; historical chart uses CoinGecko (same approach many apps use for graphs). Updates automatically.
+            <strong className="font-semibold text-slate-700">Price, market cap, volume &amp; 24h change</strong> use{" "}
+            <strong className="font-semibold text-slate-700">CoinMarketCap</strong> when your API has{" "}
+            <code className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">COINMARKETCAP_API_KEY</code>
+            ; otherwise CoinGecko. The <strong className="font-semibold text-slate-700">chart</strong> uses CoinGecko
+            historical prices (updated automatically).
           </p>
         </div>
         <div className="flex flex-wrap gap-1">
@@ -229,7 +245,18 @@ export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }
               ))}
             </div>
           </div>
-          <div ref={chartRef} className="mt-3 w-full" style={{ height: chartHeight }} />
+          <div
+            ref={chartRef}
+            className="mt-3 w-full overflow-hidden rounded-xl border border-slate-100 bg-white"
+            style={{ height: chartHeight }}
+          />
+          <p className="mt-2 text-[10px] text-slate-400">
+            Charts use{" "}
+            <a href="https://www.tradingview.com/lightweight-charts/" className="underline hover:text-slate-600">
+              Lightweight Charts
+            </a>{" "}
+            © TradingView — attribution logo hidden per library options; numeric data from CoinGecko/CMC via Oove API.
+          </p>
         </>
       ) : null}
     </div>

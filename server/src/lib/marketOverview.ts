@@ -97,7 +97,13 @@ async function fetchCoinGeckoCoinDetail(id: string): Promise<CgDetail | null> {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 9000);
-    const res = await fetch(url, { signal: ctrl.signal });
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "OovePortfolio/1.0 (https://theoove.com)",
+      },
+    });
     clearTimeout(timer);
     if (!res.ok) return null;
     const body = (await res.json()) as {
@@ -162,7 +168,13 @@ async function fetchCoinGeckoMarketChart(
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 12000);
-    const res = await fetch(url, { signal: ctrl.signal });
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "OovePortfolio/1.0 (https://theoove.com)",
+      },
+    });
     clearTimeout(timer);
     if (!res.ok) return [];
     const body = (await res.json()) as { prices?: [number, number][] };
@@ -173,8 +185,15 @@ async function fetchCoinGeckoMarketChart(
         price: typeof price === "number" && Number.isFinite(price) ? price : 0,
       }))
       .filter((p) => p.time > 0 && p.price > 0);
-    chartCache.set(cacheKey, { at: now, points });
-    return points;
+    points.sort((a, b) => a.time - b.time);
+    const deduped: { time: number; price: number }[] = [];
+    for (const p of points) {
+      const last = deduped[deduped.length - 1];
+      if (last && last.time === p.time) deduped[deduped.length - 1] = p;
+      else deduped.push(p);
+    }
+    chartCache.set(cacheKey, { at: now, points: deduped });
+    return deduped;
   } catch {
     return [];
   }
@@ -201,7 +220,7 @@ export async function getAssetMarketOverview(
   const cgId = COINGECKO_IDS[sym];
   if (!cgId) throw new Error("Unsupported symbol");
 
-  const [cmcMap, cgDetail, history] = await Promise.all([
+  const [cmcMap, cgDetail, historyRaw] = await Promise.all([
     fetchCmcQuotesLatest([sym]),
     fetchCoinGeckoCoinDetail(cgId),
     fetchCoinGeckoMarketChart(cgId, range),
@@ -211,6 +230,15 @@ export async function getAssetMarketOverview(
 
   const priceUsd = cmc?.price ?? cgDetail?.price ?? 0;
   const name = cgDetail?.name ?? sym;
+
+  let chartHistory = historyRaw;
+  if (chartHistory.length < 2 && priceUsd > 0) {
+    const t = Math.floor(Date.now() / 1000);
+    chartHistory = [
+      { time: t - 86_400, price: priceUsd },
+      { time: t, price: priceUsd },
+    ];
+  }
 
   const statsSource: "coinmarketcap" | "coingecko" = cmc ? "coinmarketcap" : "coingecko";
 
@@ -238,6 +266,6 @@ export async function getAssetMarketOverview(
     lastUpdated,
     statsSource,
     chartSource: "coingecko",
-    history,
+    history: chartHistory,
   };
 }
