@@ -77,11 +77,11 @@ identityRouter.post("/upload", limiter, async (req, res, next) => {
     data: {
       uploadUrl: `https://storage.example.invalid/presign?key=${encodeURIComponent(key)}`,
       storageKey: key,
-      note: "Demo presigned URL — wire S3/R2 in production.",
+      note: "Preview presigned URL. Wire S3/R2 in production.",
     },
   });
 });
 
 identityRouter.post("/submit", limiter, async (_req, res) => {
-  res.json({ data: { ok: true, message: "Application recorded (demo). Use KYC demo verify for tier." } });
+  res.json({ data: { ok: true, message: "Application recorded. Complete identity verification for your tier." } });
 });

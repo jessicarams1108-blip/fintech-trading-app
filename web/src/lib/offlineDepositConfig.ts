@@ -18,14 +18,14 @@ export function offlineDepositConfig(asset: AssetSymbol): {
     case "ETH":
       return {
         address: "0x000000000000000000000000000000000000dEaD",
-        network: "Ethereum (demo)",
-        note: "Demo address for layout only. " + common,
+        network: "Ethereum",
+        note: "Preview address for layout only. " + common,
       };
     case "USDT":
       return {
         address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        network: "Ethereum (ERC-20 demo)",
-        note: "Demo address for layout only. " + common,
+        network: "Ethereum (ERC-20)",
+        note: "Preview address for layout only. " + common,
       };
   }
 }

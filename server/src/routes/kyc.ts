@@ -34,13 +34,13 @@ const demoSchema = z.object({
 
 kycRouter.post("/demo-verify", limiter, authenticateRequired, async (req, res) => {
   if (!env.OOVE_DEMO_KYC) {
-    res.status(403).json({ error: "Demo verification is disabled on this server." });
+    res.status(403).json({ error: "Test verification is disabled on this server." });
     return;
   }
   const parsed = demoSchema.safeParse(req.body ?? {});
   const tier = parsed.success ? parsed.data.tier : 2;
   await setKycVerifiedDemo(req.user!.id, tier);
-  res.json({ message: "Demo identity verified.", kycStatus: "verified", kycTier: tier });
+  res.json({ message: "Identity verified.", kycStatus: "verified", kycTier: tier });
 });
 
 kycRouter.get("/status", limiter, authenticateRequired, async (req, res) => {

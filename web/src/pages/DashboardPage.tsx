@@ -254,7 +254,7 @@ export function DashboardPage() {
           <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
             {(summary?.netSupplyApyPct ?? 0).toFixed(2)}%
           </p>
-          <p className="mt-1 text-xs text-slate-500">Demo blend of base yield + utilization</p>
+          <p className="mt-1 text-xs text-slate-500">Blend of base yield + utilization</p>
         </div>
       </section>
 

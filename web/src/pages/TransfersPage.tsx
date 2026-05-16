@@ -150,7 +150,7 @@ export function TransfersPage() {
             <div className="flex flex-col items-center gap-4 pt-4">
               <QRCodeSVG value={depAddr} size={180} />
               <p className="break-all font-mono text-sm text-center">{depAddr}</p>
-              <p className="text-xs text-amber-700">Demo address — use Supply flow to submit proofs for credit.</p>
+              <p className="text-xs text-amber-700">Preview address. Use Supply flow to submit proofs for credit.</p>
             </div>
           ) : null}
         </div>
@@ -174,7 +174,7 @@ export function TransfersPage() {
           </select>
           <input className="w-full rounded-xl border px-3 py-2" placeholder="Amount" value={wdAmount} onChange={(e) => setWdAmount(e.target.value)} />
           <input className="w-full rounded-xl border px-3 py-2" placeholder="Destination address" value={wdDest} onChange={(e) => setWdDest(e.target.value)} />
-          <p className="text-sm text-slate-500">Fee: $0 (demo) · ETA after approval: 1–24h</p>
+          <p className="text-sm text-slate-500">Fee: $0 · ETA after approval: 1–24h</p>
           <button type="submit" disabled={wdMut.isPending} className="w-full rounded-xl bg-oove-blue py-2 font-semibold text-white disabled:opacity-50">
             {wdMut.isPending ? "Submitting…" : "Request withdrawal"}
           </button>

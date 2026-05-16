@@ -123,7 +123,7 @@ export function BorrowPage() {
       <div>
         <h1 className="text-3xl font-semibold text-slate-900">Borrow</h1>
         <p className="mt-2 max-w-3xl text-slate-600">
-          Borrow stablecoins against supplied collateral. Rates are demo APRs; interest accrues continuously between
+          Borrow stablecoins against supplied collateral. Rates are indicative APRs; interest accrues continuously between
           visits. Repay from the same asset wallet you received.
         </p>
       </div>
@@ -194,7 +194,7 @@ export function BorrowPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Max LTV (demo)</p>
+                <p className="text-xs text-slate-500">Max LTV</p>
                 <p className="text-lg font-semibold">{p?.maxLtvPct ?? "—"}%</p>
               </div>
               <div>

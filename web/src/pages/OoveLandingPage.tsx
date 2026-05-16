@@ -8,7 +8,7 @@ const LAVENDER_DEEP = "#e8ebfa";
 const faqs = [
   {
     q: "What is Oove?",
-    a: "Oove is an investment and treasury platform for deposits, withdrawals, and portfolio tracking—with room to grow into trading and partner integrations.",
+    a: "Oove is an investment and treasury platform for deposits, withdrawals, and portfolio tracking, with room to grow into trading and partner integrations.",
   },
   {
     q: "Where are deposited funds held?",
@@ -520,10 +520,10 @@ export function OoveLandingPage() {
         <div className="mx-auto mt-14 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-4">
           {[
             ["6+", "Years of product iteration"],
-            ["$3.46T", "Notional demo throughput"],
-            ["$1T+", "Borrow-side demo milestone"],
-            ["$88B", "Monthly demo volume"],
-            ["$1.9B", "Interest routed (demo)"],
+            ["$3.46T", "Notional throughput"],
+            ["$1T+", "Borrow-side milestone"],
+            ["$88B", "Monthly volume"],
+            ["$1.9B", "Interest routed"],
             ["SOC 2", "Target attestation path"],
           ].map(([v, l]) => (
             <div key={v} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-center">
@@ -539,7 +539,7 @@ export function OoveLandingPage() {
         <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-12 lg:gap-16">
           <div className="lg:col-span-4">
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">FAQs</h2>
-            <p className="mt-4 text-slate-600">Straight answers—swap for legal/compliance copy before launch.</p>
+            <p className="mt-4 text-slate-600">Straight answers. Swap for legal/compliance copy before launch.</p>
             <PurpleBtn to="/onboarding" className="mt-8">
               Learn more about Oove
             </PurpleBtn>
@@ -567,7 +567,7 @@ export function OoveLandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-8 border-b border-slate-200/80 pb-16 lg:flex-row lg:items-end">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Be the first to hear about Oove.</h2>
-            <p className="mt-2 text-slate-600">Product updates, research, and launches—no spam.</p>
+            <p className="mt-2 text-slate-600">Product updates, research, and launches. No spam.</p>
           </div>
           <div className="flex w-full max-w-md gap-2">
             <input
@@ -653,13 +653,8 @@ export function OoveLandingPage() {
               </ul>
             </div>
           </div>
-          <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200/80 pt-8 text-sm text-slate-500">
+          <div className="mt-12 border-t border-slate-200/80 pt-8 text-sm text-slate-500">
             <span>© {new Date().getFullYear()} Oove</span>
-            <div className="flex gap-6 text-slate-400">
-              <span>Twitter</span>
-              <span>Discord</span>
-              <span>GitHub</span>
-            </div>
           </div>
         </footer>
       </section>

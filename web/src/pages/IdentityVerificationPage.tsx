@@ -91,10 +91,10 @@ export function IdentityVerificationPage() {
       });
       const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
       if (!res.ok) {
-        showToast(body.error ?? "Demo verify failed");
+        showToast(body.error ?? "Verification failed");
         return;
       }
-      showToast(body.message ?? "Verified (demo)");
+      showToast(body.message ?? "Verified");
       await load();
     } catch {
       showToast("Network error");
@@ -168,8 +168,7 @@ export function IdentityVerificationPage() {
           <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Developer</p>
             <p className="mt-2 text-sm text-slate-600">
-              If the API has <code className="rounded bg-white px-1">OOVE_DEMO_KYC=true</code>, you can simulate an
-              approved identity for local testing.
+              When test KYC mode is enabled on the API, you can simulate an approved identity for local testing.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -178,7 +177,7 @@ export function IdentityVerificationPage() {
                 onClick={() => void demoVerify(1)}
                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-white disabled:opacity-40"
               >
-                Demo verify · Tier 1 ($30k cap)
+                Quick verify · Tier 1 ($30k cap)
               </button>
               <button
                 type="button"
@@ -186,7 +185,7 @@ export function IdentityVerificationPage() {
                 onClick={() => void demoVerify(2)}
                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-white disabled:opacity-40"
               >
-                Demo verify · Tier 2 ($65k cap)
+                Quick verify · Tier 2 ($65k cap)
               </button>
               <button
                 type="button"
@@ -194,7 +193,7 @@ export function IdentityVerificationPage() {
                 onClick={() => void demoVerify(3)}
                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-white disabled:opacity-40"
               >
-                Demo verify · Tier 3 ($100k+ cap)
+                Quick verify · Tier 3 ($100k+ cap)
               </button>
             </div>
           </div>
