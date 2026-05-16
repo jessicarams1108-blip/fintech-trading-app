@@ -44,15 +44,6 @@ async function fetchTopPrices(): Promise<TopRow[]> {
   return body.data ?? [];
 }
 
-function fmtUsdSpot(n: number): string {
-  return n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: n > 0 && n < 1 ? 6 : 2,
-  });
-}
-
 type HomeQuickDepositProps = {
   token: string | null;
   onSubmitted: () => void;
@@ -264,36 +255,11 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
 
   const total = summaryQ.data?.totalValueUsd ?? 0;
   const chg = summaryQ.data?.change24hPct ?? 0;
-  const alloc = summaryQ.data?.allocation ?? [];
   const holdingsSortedByValue = useMemo(() => {
     const rows = [...(holdingsQ.data ?? [])];
     rows.sort((a, b) => b.valueUsd - a.valueUsd);
     return rows;
   }, [holdingsQ.data]);
-
-  const allocationDisplay = useMemo(() => {
-    const holdings = [...(holdingsQ.data ?? [])].filter((h) => h.valueUsd > 0);
-    const denom = total > 1e-9 ? total : holdings.reduce((s, h) => s + h.valueUsd, 0);
-    if (holdings.length > 0) {
-      holdings.sort((a, b) => b.valueUsd - a.valueUsd);
-      return holdings.map((h) => ({
-        symbol: h.symbol,
-        quantity: h.quantity,
-        spotUsd: h.currentPriceUsd,
-        valueUsd: h.valueUsd,
-        pct: denom > 0 ? (h.valueUsd / denom) * 100 : 0,
-      }));
-    }
-    return alloc
-      .filter((x) => x.valueUsd > 0)
-      .map((x) => ({
-        symbol: x.symbol,
-        quantity: null as string | null,
-        spotUsd: null as number | null,
-        valueUsd: x.valueUsd,
-        pct: denom > 0 ? (x.valueUsd / denom) * 100 : 0,
-      }));
-  }, [holdingsQ.data, alloc, total]);
 
   const handleDepositSubmitted = () => {
     void qc.invalidateQueries({ queryKey: ["portfolio"] });
@@ -341,8 +307,7 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-start gap-2">
                   <BalanceVisibilityEyeToggle className="mt-0.5" />
                   <div className="min-w-0 flex-1">
@@ -354,10 +319,6 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
                   <MaskedValue>{formatBtcEquivalent(total, btcUsdSpot)}</MaskedValue>
                   <span className="ml-1 text-xs font-normal font-sans text-slate-500">(BTC at live spot)</span>
                 </p>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Fiat total in USD, plus the same portfolio expressed in whole bitcoin using the current BTC/USD price
-                  from the market feed.
-                </p>
                 <p className={`mt-2 text-sm font-medium ${chg >= 0 ? "text-emerald-600" : "text-red-600"}`}>
                   {chg >= 0 ? "+" : ""}
                   {chg.toFixed(2)}% vs prior snapshot
@@ -368,39 +329,6 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
                   </div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold text-slate-900">Allocation (USD at live spot)</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                  Each asset: balance × real-time USD price = value in dollars, and % of your total portfolio.
-                </p>
-                <ul className="mt-3 max-h-52 divide-y divide-slate-100 overflow-y-auto text-sm">
-                  {allocationDisplay.length === 0 ? <li className="py-3 text-slate-500">No balances yet.</li> : null}
-                  {allocationDisplay.map((row) => (
-                    <li key={row.symbol} className="py-2.5">
-                      <div className="flex justify-between gap-2">
-                        <span className="font-semibold text-slate-900">{row.symbol}</span>
-                        <span className="tabular-nums font-medium text-slate-800">
-                          <MaskedValue>{formatPortfolioTotalUsd(row.valueUsd)}</MaskedValue>
-                        </span>
-                      </div>
-                      {row.quantity != null && row.spotUsd != null ? (
-                        <p className="mt-1 text-xs text-slate-600">
-                          <span className="font-mono tabular-nums">
-                            <MaskedValue>{formatAssetQuantity(row.symbol, row.quantity)}</MaskedValue>
-                          </span>{" "}
-                          ×{" "}
-                          <MaskedValue>{fmtUsdSpot(row.spotUsd)}</MaskedValue>
-                          <span className="text-slate-400"> / unit (live)</span>
-                        </p>
-                      ) : null}
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        <MaskedValue>{row.pct.toFixed(1)}%</MaskedValue> of portfolio
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 shadow-inner">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Market assets (USD)</p>
               {topQ.isError ? (

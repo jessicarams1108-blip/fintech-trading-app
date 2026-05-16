@@ -475,12 +475,12 @@ export function OoveLandingPage() {
         </div>
         <div className="mx-auto mt-12 grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[
-            { k: "2M+", d: "Users reached via partner surfaces (demo)." },
-            { k: "100M+", d: "Addressable users in target segments (demo)." },
-            { k: "$360M+", d: "Notional throughput on pilot programs (demo)." },
-            { k: "$10B+", d: "Cumulative volume milestone (demo)." },
-            { k: "-40%", d: "Operational cost vs. legacy stack (demo)." },
-            { k: "SOC 2", d: "Security roadmap alignment (demo)." },
+            { k: "2M+", d: "Users reached via partner surfaces." },
+            { k: "100M+", d: "Addressable users in target segments." },
+            { k: "$360M+", d: "Notional throughput on pilot programs." },
+            { k: "$10B+", d: "Cumulative volume milestone." },
+            { k: "-40%", d: "Operational cost vs. legacy stack." },
+            { k: "SOC 2", d: "Security roadmap alignment." },
           ].map((m) => (
             <div
               key={m.k}

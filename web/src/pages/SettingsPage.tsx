@@ -79,7 +79,6 @@ function ThemeToggle() {
 export function SettingsPage() {
   const { token, user } = useAuth();
   const { showToast } = useToast();
-  const { theme, setTheme } = useTheme();
   const { currency, setCurrency, language, setLanguage } = usePreferences();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("account");
@@ -377,32 +376,6 @@ export function SettingsPage() {
                 <p className="text-xs text-slate-500 dark:text-slate-400">Light or dark interface</p>
               </div>
               <ThemeToggle />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setTheme("light")}
-                className={clsx(
-                  "rounded-full border px-4 py-2 text-sm font-semibold transition duration-200",
-                  theme === "light"
-                    ? "border-oove-blue bg-oove-blue text-white"
-                    : "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800",
-                )}
-              >
-                Light
-              </button>
-              <button
-                type="button"
-                onClick={() => setTheme("dark")}
-                className={clsx(
-                  "rounded-full border px-4 py-2 text-sm font-semibold transition duration-200",
-                  theme === "dark"
-                    ? "border-oove-blue bg-oove-blue text-white"
-                    : "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800",
-                )}
-              >
-                Dark
-              </button>
             </div>
           </SettingsCard>
 

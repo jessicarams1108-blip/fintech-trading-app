@@ -361,14 +361,6 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">
-        <p className="font-semibold text-slate-900">Why this mirrors Aave’s story</p>
-        <p className="mt-2">
-          Aave grew by pairing simple supply/borrow UX with rigorous risk and security work. Oove applies the same
-          product discipline for a custodial-aware trading and treasury experience: clear caps, identity-gated credit,
-          and room to grow into multi-chain and institutional-style controls.
-        </p>
-      </section>
     </div>
   );
 }
