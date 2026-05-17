@@ -21,13 +21,17 @@ export type FixedSubscription = {
   start_date: string;
   end_date: string;
   interest_earned: string;
+  accrued_interest?: string;
+  last_interest_credit_at?: string | null;
   status: string;
+  total_payout?: number;
   goal_name: string | null;
   auto_renewal: boolean;
   disable_interest: boolean;
   created_at: string;
   plan_name: string;
   rate: string;
+  plan_min_days?: number;
   user_email?: string;
 };
 
@@ -59,6 +63,13 @@ export function fetchFixedSavingsSummary(token: string) {
 
 export function fetchCashBoxBalance(token: string) {
   return authJson<{ cashBoxUsd: number; currency: string }>("/api/wallet/balance", token);
+}
+
+export function withdrawFixedPlan(token: string, subscriptionId: string) {
+  return authJson<{ payout: number; subscription: FixedSubscription }>("/api/fixed-plans/withdraw", token, {
+    method: "POST",
+    body: JSON.stringify({ subscription_id: subscriptionId }),
+  });
 }
 
 export function subscribeFixedPlan(

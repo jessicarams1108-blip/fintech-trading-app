@@ -37,6 +37,7 @@ import { marketRouter } from "./routes/market.js";
 import { fixedSavingsRouter } from "./routes/fixedSavings.js";
 import { walletRouter } from "./routes/wallet.js";
 import { createAdminFixedSavingsRoutes } from "./routes/adminFixedSavings.js";
+import { startFixedSavingsCron } from "./jobs/fixedSavingsCron.js";
 
 /** Built Vite app (`npm run build -w web`), resolved from `server/dist/index.js`. */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -157,7 +158,7 @@ app.use(
       /deposit not pending|missing unexpectedly/i.test(message) ||
       message === "Malformed transaction identifier for asset" ||
       /KYC columns are missing|Identity verification table is missing|User profile columns are missing|npm run db:(sql|migrate)/i.test(message) ||
-      /Insufficient wallet balance|Insufficient balance|Insufficient CashBox|Amount exceeds|Amount must be|Duration must be|Plan not found|Identity verification must be approved|Recipient not found|Borrow position not active|Invalid borrow position|Watchlist not available|Username not allowed|Username is taken|Current password incorrect/i.test(
+      /Insufficient wallet balance|Insufficient balance|Insufficient CashBox|Amount exceeds|Amount must be|Duration must be|Plan not found|Identity verification must be approved|Not yet matured|Subscription not found|Recipient not found|Borrow position not active|Invalid borrow position|Watchlist not available|Username not allowed|Username is taken|Current password incorrect/i.test(
         message,
       );
 
@@ -191,6 +192,8 @@ async function startServer(): Promise<void> {
   } catch (err) {
     console.error("[Startup] Database migration check failed:", err);
   }
+
+  startFixedSavingsCron();
 
   server.listen(listenPort, "0.0.0.0", () => {
     console.log(`[Startup] Listening on 0.0.0.0:${listenPort} (process.env.PORT=${listenPortRaw ?? "unset"} → using ${listenPort})`);

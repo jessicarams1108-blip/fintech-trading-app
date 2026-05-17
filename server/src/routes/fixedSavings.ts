@@ -8,6 +8,7 @@ import {
   listUserSubscriptions,
   subscribeFixedSavings,
   sumActiveFixedSavingsUsd,
+  withdrawFixedSavings,
 } from "../db/queries/fixedSavings.js";
 
 const limiter = rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false });
@@ -42,15 +43,19 @@ fixedSavingsRouter.get("/my-plans", limiter, async (req, res, next) => {
   }
 });
 
-fixedSavingsRouter.get("/:id", limiter, async (req, res, next) => {
+fixedSavingsRouter.post("/withdraw", limiter, async (req, res, next) => {
   try {
-    const planId = String(req.params.id);
-    const plan = await getPlanById(planId);
-    if (!plan) {
-      res.status(404).json({ error: "Plan not found" });
+    const subscriptionId =
+      typeof req.body?.subscription_id === "string" ? req.body.subscription_id.trim() : "";
+    if (!subscriptionId) {
+      res.status(400).json({ error: "subscription_id is required" });
       return;
     }
-    res.json({ data: plan });
+    const result = await withdrawFixedSavings({
+      userId: req.user!.id,
+      subscriptionId,
+    });
+    res.json({ data: { payout: result.payout, subscription: result.subscription } });
   } catch (e) {
     next(e);
   }
@@ -73,7 +78,7 @@ fixedSavingsRouter.post("/subscribe", limiter, async (req, res, next) => {
       res.status(400).json({ error: "plan_id, amount, and days are required" });
       return;
     }
-    const sub = await subscribeFixedSavings({
+    const { subscription, totalPayout } = await subscribeFixedSavings({
       userId: req.user!.id,
       planId,
       amount,
@@ -82,7 +87,21 @@ fixedSavingsRouter.post("/subscribe", limiter, async (req, res, next) => {
       autoRenewal: Boolean(body.auto_renewal),
       disableInterest: Boolean(body.disable_interest),
     });
-    res.status(201).json({ data: sub });
+    res.status(201).json({ data: { ...subscription, total_payout: totalPayout } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+fixedSavingsRouter.get("/:id", limiter, async (req, res, next) => {
+  try {
+    const planId = String(req.params.id);
+    const plan = await getPlanById(planId);
+    if (!plan) {
+      res.status(404).json({ error: "Plan not found" });
+      return;
+    }
+    res.json({ data: plan });
   } catch (e) {
     next(e);
   }

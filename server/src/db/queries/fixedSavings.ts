@@ -1,7 +1,16 @@
 import type { PoolClient } from "pg";
 import { pool } from "../index.js";
-import { getUserKyc, suppliedUsdFromWallets, getUserWallets } from "./liquidity.js";
+import { computeReturn, computeTotalPayout } from "../../lib/fixedSavingsMath.js";
+import {
+  CASHBOX_SPENDABLE_CURRENCIES,
+  cashBoxUsdPrice,
+  getUserKyc,
+  getUserWallets,
+  spendableCashBoxUsdFromWallets,
+} from "./liquidity.js";
 import { rethrowPgSchemaError } from "../../lib/pgErrors.js";
+
+export { computeTotalPayout } from "../../lib/fixedSavingsMath.js";
 
 export type FixedPlanRow = {
   id: string;
@@ -24,6 +33,8 @@ export type FixedSubscriptionRow = {
   start_date: string;
   end_date: string;
   interest_earned: string;
+  accrued_interest: string;
+  last_interest_credit_at: Date | string | null;
   status: string;
   goal_name: string | null;
   auto_renewal: boolean;
@@ -36,12 +47,41 @@ export type FixedSubscriptionRow = {
 export type FixedSubscriptionWithPlan = FixedSubscriptionRow & {
   plan_name: string;
   rate: string;
+  plan_min_days: number;
   user_email?: string;
 };
 
-export function computeInterest(amount: number, ratePct: number, days: number, disableInterest: boolean): number {
-  if (disableInterest) return 0;
-  return Math.round(amount * (ratePct / 100) * (days / 365) * 1_000_000) / 1_000_000;
+export async function matureSubscriptionsPastEndDate(): Promise<number> {
+  try {
+    const res = await pool.query(
+      `UPDATE fixed_savings_subscriptions
+       SET status = 'matured',
+           matured_at = COALESCE(matured_at, NOW()),
+           interest_earned = accrued_interest
+       WHERE status = 'active' AND end_date <= CURRENT_DATE`,
+    );
+    return res.rowCount ?? 0;
+  } catch (e) {
+    rethrowPgSchemaError(e);
+  }
+}
+
+export async function accrueDailyInterestForActiveSubscriptions(): Promise<number> {
+  try {
+    const res = await pool.query(
+      `UPDATE fixed_savings_subscriptions s
+       SET accrued_interest = s.accrued_interest + (s.amount * p.rate / 100.0 / GREATEST(s.days, 1)),
+           last_interest_credit_at = NOW()
+       FROM fixed_savings_plans p
+       WHERE p.id = s.plan_id
+         AND s.status = 'active'
+         AND NOT s.disable_interest
+         AND (s.last_interest_credit_at IS NULL OR s.last_interest_credit_at::date < CURRENT_DATE)`,
+    );
+    return res.rowCount ?? 0;
+  } catch (e) {
+    rethrowPgSchemaError(e);
+  }
 }
 
 export async function listActivePlans(): Promise<FixedPlanRow[]> {
@@ -73,7 +113,7 @@ export async function getPlanById(planId: string): Promise<FixedPlanRow | null> 
 
 export async function getCashBoxBalanceUsd(userId: string): Promise<number> {
   const wallets = await getUserWallets(userId);
-  return suppliedUsdFromWallets(wallets);
+  return spendableCashBoxUsdFromWallets(wallets);
 }
 
 export async function sumActiveFixedSavingsUsd(userId: string): Promise<number> {
@@ -93,7 +133,7 @@ export async function sumActiveFixedSavingsUsd(userId: string): Promise<number> 
 export async function listUserSubscriptions(userId: string): Promise<FixedSubscriptionWithPlan[]> {
   try {
     const { rows } = await pool.query<FixedSubscriptionWithPlan>(
-      `SELECT s.*, p.name AS plan_name, p.rate::text AS rate
+      `SELECT s.*, p.name AS plan_name, p.rate::text AS rate, p.min_days AS plan_min_days
        FROM fixed_savings_subscriptions s
        JOIN fixed_savings_plans p ON p.id = s.plan_id
        WHERE s.user_id = $1::uuid
@@ -134,7 +174,7 @@ export async function listAllSubscriptions(filters: {
     }
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     const { rows } = await pool.query<FixedSubscriptionWithPlan>(
-      `SELECT s.*, p.name AS plan_name, p.rate::text AS rate, u.email AS user_email
+      `SELECT s.*, p.name AS plan_name, p.rate::text AS rate, p.min_days AS plan_min_days, u.email AS user_email
        FROM fixed_savings_subscriptions s
        JOIN fixed_savings_plans p ON p.id = s.plan_id
        JOIN users u ON u.id = s.user_id
@@ -149,7 +189,9 @@ export async function listAllSubscriptions(filters: {
   }
 }
 
-const STABLE_DEBIT_ORDER = ["USDT", "USDC", "USD", "DAI"] as const;
+const STABLE_DEBIT_ORDER = CASHBOX_SPENDABLE_CURRENCIES;
+
+const INSUFFICIENT_CASHBOX_MSG = "Insufficient CashBox balance";
 
 async function debitUsdEquivalent(
   client: PoolClient,
@@ -162,6 +204,9 @@ async function debitUsdEquivalent(
 
   for (const currency of STABLE_DEBIT_ORDER) {
     if (remaining <= 0) break;
+    const px = cashBoxUsdPrice(currency);
+    if (px <= 0) continue;
+
     const { rows } = await client.query<{ balance: string }>(
       `SELECT balance::text AS balance FROM wallets
        WHERE user_id = $1::uuid AND currency = $2::text FOR UPDATE`,
@@ -169,7 +214,16 @@ async function debitUsdEquivalent(
     );
     const bal = Number.parseFloat(rows[0]?.balance ?? "0");
     if (!Number.isFinite(bal) || bal <= 0) continue;
-    const take = Math.min(bal, remaining);
+
+    const balUsd = Math.round(bal * px * 100) / 100;
+    const takeUsd = Math.min(balUsd, remaining);
+    if (takeUsd <= 0) continue;
+
+    const take =
+      currency === "BTC"
+        ? Math.round((takeUsd / px) * 1e8) / 1e8
+        : Math.round(takeUsd * 100) / 100;
+
     const deb = await client.query(
       `UPDATE wallets SET balance = balance - $3::numeric
        WHERE user_id = $1::uuid AND currency = $2::text AND balance >= $3::numeric
@@ -182,11 +236,11 @@ async function debitUsdEquivalent(
        VALUES ($1::uuid, $2::text, 'debit', $3::numeric, 'fixed_savings_lock', 'fixed_savings', $4::uuid)`,
       [userId, currency, take.toFixed(8), refId],
     );
-    remaining = Math.round((remaining - take) * 100) / 100;
+    remaining = Math.round((remaining - takeUsd) * 100) / 100;
   }
 
   if (remaining > 0.01) {
-    throw new Error("Insufficient CashBox balance");
+    throw new Error(INSUFFICIENT_CASHBOX_MSG);
   }
 }
 
@@ -220,7 +274,7 @@ export async function subscribeFixedSavings(input: {
   goalName?: string;
   autoRenewal: boolean;
   disableInterest: boolean;
-}): Promise<FixedSubscriptionWithPlan> {
+}): Promise<{ subscription: FixedSubscriptionWithPlan; totalPayout: number }> {
   const kyc = await getUserKyc(input.userId);
   if (kyc.kyc_status !== "verified") {
     throw new Error("Identity verification must be approved before fixed savings");
@@ -233,16 +287,20 @@ export async function subscribeFixedSavings(input: {
 
   const minAmt = Number.parseFloat(plan.min_amount);
   const maxAmt = Number.parseFloat(plan.max_amount);
+  const ratePct = Number.parseFloat(plan.rate);
+  const termDays = plan.min_days;
+  const totalPayout = computeTotalPayout(input.amount, ratePct, input.disableInterest);
+
   if (input.amount < minAmt || input.amount > maxAmt) {
     throw new Error(`Amount must be between $${minAmt.toLocaleString()} and $${maxAmt.toLocaleString()}`);
   }
-  if (input.days < plan.min_days || input.days > plan.max_days) {
-    throw new Error(`Duration must be between ${plan.min_days} and ${plan.max_days} days`);
+  if (input.days !== termDays) {
+    throw new Error(`This plan has a fixed ${termDays}-day term (${plan.name})`);
   }
 
   const balance = await getCashBoxBalanceUsd(input.userId);
   if (input.amount > balance) {
-    throw new Error("Insufficient CashBox balance");
+    throw new Error(INSUFFICIENT_CASHBOX_MSG);
   }
 
   const client = await pool.connect();
@@ -255,7 +313,7 @@ export async function subscribeFixedSavings(input: {
          goal_name, auto_renewal, disable_interest
        ) VALUES (
          $1::uuid, $2::uuid, $3::numeric, $4, CURRENT_DATE,
-         (CURRENT_DATE + ($4::int - 1) * INTERVAL '1 day')::date,
+         (CURRENT_DATE + ($4::int) * INTERVAL '1 day')::date,
          'active', $5, $6, $7
        )
        RETURNING *`,
@@ -275,7 +333,63 @@ export async function subscribeFixedSavings(input: {
     await client.query("COMMIT");
 
     const full = await getSubscriptionById(sub.id);
-    return full!;
+    if (!full) throw new Error("Subscription created but not found");
+    return { subscription: full, totalPayout };
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export async function withdrawFixedSavings(input: {
+  userId: string;
+  subscriptionId: string;
+}): Promise<{ payout: number; subscription: FixedSubscriptionWithPlan }> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query<FixedSubscriptionRow & { rate: string }>(
+      `SELECT s.*, p.rate::text AS rate
+       FROM fixed_savings_subscriptions s
+       JOIN fixed_savings_plans p ON p.id = s.plan_id
+       WHERE s.id = $1::uuid AND s.user_id = $2::uuid
+       FOR UPDATE`,
+      [input.subscriptionId, input.userId],
+    );
+    const sub = rows[0];
+    if (!sub) {
+      await client.query("ROLLBACK");
+      throw new Error("Subscription not found");
+    }
+    if (sub.status !== "matured") {
+      await client.query("ROLLBACK");
+      const endRaw = String(sub.end_date).slice(0, 10);
+      const endLabel = new Date(`${endRaw}T12:00:00`).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      throw new Error(`Not yet matured. Available on ${endLabel}`);
+    }
+
+    const principal = Number.parseFloat(sub.amount);
+    const accrued = Number.parseFloat(sub.accrued_interest ?? "0");
+    const payout = Math.round((principal + accrued) * 100) / 100;
+
+    await creditUsdEquivalent(client, sub.user_id, payout, "fixed_savings_withdraw", sub.id);
+    await client.query(
+      `UPDATE fixed_savings_subscriptions
+       SET status = 'withdrawn', interest_earned = $2::numeric, closed_at = NOW()
+       WHERE id = $1::uuid`,
+      [sub.id, accrued],
+    );
+    await client.query("COMMIT");
+
+    const updated = await getSubscriptionById(sub.id);
+    if (!updated) throw new Error("Withdrawal completed but subscription not found");
+    return { payout, subscription: updated };
   } catch (e) {
     await client.query("ROLLBACK");
     throw e;
@@ -287,7 +401,7 @@ export async function subscribeFixedSavings(input: {
 export async function getSubscriptionById(id: string): Promise<FixedSubscriptionWithPlan | null> {
   try {
     const { rows } = await pool.query<FixedSubscriptionWithPlan>(
-      `SELECT s.*, p.name AS plan_name, p.rate::text AS rate
+      `SELECT s.*, p.name AS plan_name, p.rate::text AS rate, p.min_days AS plan_min_days
        FROM fixed_savings_subscriptions s
        JOIN fixed_savings_plans p ON p.id = s.plan_id
        WHERE s.id = $1::uuid LIMIT 1`,
@@ -307,8 +421,8 @@ export async function closeSubscriptionAdmin(input: {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const { rows } = await client.query<FixedSubscriptionRow & { rate: string }>(
-      `SELECT s.*, p.rate::text AS rate
+    const { rows } = await client.query<FixedSubscriptionRow & { rate: string; plan_min_days: number }>(
+      `SELECT s.*, p.rate::text AS rate, p.min_days AS plan_min_days
        FROM fixed_savings_subscriptions s
        JOIN fixed_savings_plans p ON p.id = s.plan_id
        WHERE s.id = $1::uuid AND s.status = 'active'
@@ -322,8 +436,10 @@ export async function closeSubscriptionAdmin(input: {
     }
 
     const amount = Number.parseFloat(sub.amount);
+    const accrued = Number.parseFloat(sub.accrued_interest ?? "0");
     const rate = Number.parseFloat(sub.rate);
-    const interest = computeInterest(amount, rate, sub.days, sub.disable_interest);
+    const projectedReturn = sub.disable_interest ? 0 : computeReturn(amount, rate, false);
+    const interest = sub.disable_interest ? 0 : accrued > 0 ? accrued : projectedReturn;
     const principal = amount;
     const payout = principal + interest;
 
@@ -343,7 +459,7 @@ export async function closeSubscriptionAdmin(input: {
            goal_name, auto_renewal, disable_interest
          ) VALUES (
            $1::uuid, $2::uuid, $3::numeric, $4, CURRENT_DATE,
-           (CURRENT_DATE + ($4::int - 1) * INTERVAL '1 day')::date,
+           (CURRENT_DATE + ($4::int) * INTERVAL '1 day')::date,
            'active', $5, $6, $7
          )`,
         [

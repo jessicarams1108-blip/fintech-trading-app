@@ -434,80 +434,6 @@ export function SettingsPage() {
               </div>
             )}
           </SettingsCard>
-
-          <SettingsCard>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Change password</h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Minimum 8 characters for your new password.</p>
-            <div className="mt-6 space-y-4">
-              <div>
-                <label className={labelClass()} htmlFor="settings-cur-pw">
-                  Current password
-                </label>
-                <input
-                  id="settings-cur-pw"
-                  type="password"
-                  autoComplete="current-password"
-                  className={clsx(fieldClass(), "mt-1.5")}
-                  value={curPw}
-                  onChange={(e) => setCurPw(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className={labelClass()} htmlFor="settings-new-pw">
-                  New password
-                </label>
-                <input
-                  id="settings-new-pw"
-                  type="password"
-                  autoComplete="new-password"
-                  className={clsx(fieldClass(), "mt-1.5")}
-                  value={newPw}
-                  onChange={(e) => setNewPw(e.target.value)}
-                  minLength={8}
-                />
-              </div>
-              <div>
-                <label className={labelClass()} htmlFor="settings-confirm-pw">
-                  Confirm new password
-                </label>
-                <input
-                  id="settings-confirm-pw"
-                  type="password"
-                  autoComplete="new-password"
-                  className={clsx(
-                    fieldClass(),
-                    "mt-1.5",
-                    confirmPw.length > 0 && newPw !== confirmPw && "border-red-300 focus:border-red-500 focus:ring-red-200",
-                  )}
-                  value={confirmPw}
-                  onChange={(e) => setConfirmPw(e.target.value)}
-                  minLength={8}
-                />
-                {confirmPw.length > 0 && newPw !== confirmPw ? (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">Passwords do not match</p>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                disabled={
-                  changePw.isPending ||
-                  !token ||
-                  curPw.length === 0 ||
-                  newPw.length < 8 ||
-                  confirmPw.length < 8 ||
-                  newPw !== confirmPw
-                }
-                onClick={() => changePw.mutate()}
-                className={clsx(
-                  "rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition",
-                  changePw.isPending ? "bg-slate-600/70" : "bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white",
-                  pwSavedFlash && !changePw.isPending && "ring-2 ring-emerald-400 ring-offset-2 dark:ring-offset-slate-900",
-                )}
-              >
-                {changePw.isPending ? "Updating…" : pwSavedFlash ? "Updated ✓" : "Update password"}
-              </button>
-            </div>
-          </SettingsCard>
         </div>
       )}
 
@@ -585,8 +511,83 @@ export function SettingsPage() {
       )}
 
       {tab === "security" && (
-        <SettingsCard>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Sessions</h2>
+        <div className="space-y-6">
+          <SettingsCard>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Change password</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Minimum 8 characters for your new password.</p>
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className={labelClass()} htmlFor="settings-cur-pw">
+                  Current password
+                </label>
+                <input
+                  id="settings-cur-pw"
+                  type="password"
+                  autoComplete="current-password"
+                  className={clsx(fieldClass(), "mt-1.5")}
+                  value={curPw}
+                  onChange={(e) => setCurPw(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={labelClass()} htmlFor="settings-new-pw">
+                  New password
+                </label>
+                <input
+                  id="settings-new-pw"
+                  type="password"
+                  autoComplete="new-password"
+                  className={clsx(fieldClass(), "mt-1.5")}
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  minLength={8}
+                />
+              </div>
+              <div>
+                <label className={labelClass()} htmlFor="settings-confirm-pw">
+                  Confirm new password
+                </label>
+                <input
+                  id="settings-confirm-pw"
+                  type="password"
+                  autoComplete="new-password"
+                  className={clsx(
+                    fieldClass(),
+                    "mt-1.5",
+                    confirmPw.length > 0 && newPw !== confirmPw && "border-red-300 focus:border-red-500 focus:ring-red-200",
+                  )}
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                  minLength={8}
+                />
+                {confirmPw.length > 0 && newPw !== confirmPw ? (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">Passwords do not match</p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                disabled={
+                  changePw.isPending ||
+                  !token ||
+                  curPw.length === 0 ||
+                  newPw.length < 8 ||
+                  confirmPw.length < 8 ||
+                  newPw !== confirmPw
+                }
+                onClick={() => changePw.mutate()}
+                className={clsx(
+                  "rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition",
+                  changePw.isPending ? "bg-slate-600/70" : "bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white",
+                  pwSavedFlash && !changePw.isPending && "ring-2 ring-emerald-400 ring-offset-2 dark:ring-offset-slate-900",
+                )}
+              >
+                {changePw.isPending ? "Updating…" : pwSavedFlash ? "Updated ✓" : "Update password"}
+              </button>
+            </div>
+          </SettingsCard>
+
+          <SettingsCard>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Sessions</h2>
           {sessions.isLoading ? (
             <div className="mt-4 space-y-3">
               <SkeletonLine className="h-14 w-full" />
@@ -619,7 +620,8 @@ export function SettingsPage() {
               ))}
             </ul>
           )}
-        </SettingsCard>
+          </SettingsCard>
+        </div>
       )}
     </div>
   );

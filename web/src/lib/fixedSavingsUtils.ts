@@ -1,10 +1,10 @@
-/** Three quick-pick day options inside [minDays, maxDays]. */
-export function quickDayOptions(minDays: number, maxDays: number): number[] {
-  if (maxDays <= minDays) return [minDays];
-  if (maxDays - minDays <= 2) return [...new Set([minDays, maxDays])];
-  let mid = Math.round((minDays + maxDays) / 2);
-  if (minDays === 30 && maxDays === 59) mid = 40;
-  return [...new Set([minDays, mid, maxDays])].sort((a, b) => a - b);
+/** Fixed term: one duration per plan (min === max). */
+export function planTermDays(minDays: number, maxDays: number): number {
+  return Math.max(minDays, maxDays);
+}
+
+export function isFixedTermPlan(minDays: number, maxDays: number): boolean {
+  return minDays === maxDays;
 }
 
 export function addDaysToDate(start: Date, days: number): Date {
@@ -24,7 +24,51 @@ export function formatUsd(amount: number): string {
   return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/** e.g. "20% Return" */
 export function formatRate(rate: string | number): string {
   const n = typeof rate === "string" ? Number.parseFloat(rate) : rate;
-  return `${n.toFixed(2)}% p.a.`;
+  return `${n.toFixed(0)}% Return`;
+}
+
+export function formatPlanLabel(planName: string, minDays: number, maxDays: number): string {
+  if (minDays === maxDays && minDays > 0) {
+    return `${planName} · ${minDays} day${minDays === 1 ? "" : "s"} lock`;
+  }
+  return `${planName} · ${minDays} - ${maxDays} days`;
+}
+
+/**
+ * A = P(1 + r). Total payout does not vary with days within a fixed-term plan.
+ */
+export function computeTotalPayout(
+  amount: number,
+  ratePct: number,
+  _days: number,
+  _minDays: number,
+  disableInterest: boolean,
+): number {
+  void _days;
+  void _minDays;
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  if (disableInterest) return Math.round(amount * 100) / 100;
+  return Math.round(amount * (1 + ratePct / 100) * 100) / 100;
+}
+
+export function computeReturn(
+  amount: number,
+  ratePct: number,
+  _days: number,
+  _minDays: number,
+  disableInterest: boolean,
+): number {
+  void _days;
+  void _minDays;
+  if (disableInterest || !Number.isFinite(amount) || amount <= 0) return 0;
+  return Math.round(amount * (ratePct / 100) * 100) / 100;
+}
+
+export function formatMaturityDate(endDate: string): string {
+  const d = new Date(`${endDate.slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return endDate;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }

@@ -9,6 +9,14 @@ export type WalletBalanceRow = {
   balance: string;
 };
 
+/** Assets that can fund fixed savings; debited in this order (stables first, then BTC). */
+export const CASHBOX_SPENDABLE_CURRENCIES = ["USDT", "USDC", "USD", "DAI", "BTC"] as const;
+
+export function cashBoxUsdPrice(currency: string): number {
+  const px = ORACLE_USD[currency];
+  return Number.isFinite(px) && px > 0 ? px : 0;
+}
+
 export async function getUserWallets(userId: string): Promise<WalletBalanceRow[]> {
   const res = await pool.query<WalletBalanceRow>(
     `SELECT currency, balance::text AS balance FROM wallets WHERE user_id = $1::uuid`,
@@ -23,6 +31,21 @@ export function suppliedUsdFromWallets(rows: WalletBalanceRow[]): number {
     const px = ORACLE_USD[row.currency] ?? 0;
     const amt = Number.parseFloat(row.balance);
     if (!Number.isFinite(amt)) continue;
+    total += amt * px;
+  }
+  return Math.round(total * 100) / 100;
+}
+
+/** USD available to lock in fixed savings (spendable CashBox assets). */
+export function spendableCashBoxUsdFromWallets(rows: WalletBalanceRow[]): number {
+  const spendable = new Set<string>(CASHBOX_SPENDABLE_CURRENCIES);
+  let total = 0;
+  for (const row of rows) {
+    if (!spendable.has(row.currency)) continue;
+    const px = cashBoxUsdPrice(row.currency);
+    if (px <= 0) continue;
+    const amt = Number.parseFloat(row.balance);
+    if (!Number.isFinite(amt) || amt <= 0) continue;
     total += amt * px;
   }
   return Math.round(total * 100) / 100;
