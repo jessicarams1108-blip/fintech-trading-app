@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/apiBase";
-import type { MarketRow } from "@/lib/aiMarketsData";
+import { FALLBACK_STOCKS, type MarketRow } from "@/lib/aiMarketsData";
 
 const CRYPTO_IDS = [
   "bitcoin",
@@ -102,8 +102,12 @@ const STOCK_SYMBOLS = [
 ];
 
 export async function fetchLiveStocks(): Promise<MarketRow[]> {
-  const res = await apiFetch(`/api/market/equity-quotes?symbols=${STOCK_SYMBOLS.join(",")}`);
-  const body = (await res.json().catch(() => ({}))) as { data?: MarketRow[]; error?: string };
-  if (!res.ok) throw new Error(body.error ?? "Could not load stocks");
-  return body.data ?? [];
+  try {
+    const res = await apiFetch(`/api/market/equity-quotes?symbols=${STOCK_SYMBOLS.join(",")}`);
+    const body = (await res.json().catch(() => ({}))) as { data?: MarketRow[]; error?: string };
+    if (res.ok && body.data && body.data.length > 0) return body.data;
+  } catch {
+    /* use snapshot below */
+  }
+  return FALLBACK_STOCKS;
 }

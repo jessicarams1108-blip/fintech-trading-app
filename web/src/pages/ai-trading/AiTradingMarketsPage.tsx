@@ -12,7 +12,6 @@ import {
   MarketTableRows,
 } from "@/components/ai-trading/MarketListPublic";
 import { StartTradeModal } from "@/components/ai-trading/StartTradeModal";
-import { AiTradingDisclaimer } from "@/components/ai-trading/AiTradingDisclaimer";
 import {
   BOND_FILTER_PILLS,
   HARDCODED_BONDS,
@@ -80,10 +79,6 @@ export function AiTradingMarketsPage() {
   return (
     <div className="pb-4">
       <AiTradingTopBar title="Markets" />
-      <div className="px-4 pt-2">
-        <AiTradingDisclaimer compact />
-      </div>
-
       <AiTradingUnderlineTabs tabs={TABS} active={tab} onChange={setTab} showFilter />
 
       {tab === "Stocks" && (
@@ -92,8 +87,6 @@ export function AiTradingMarketsPage() {
           <FilterPills pills={STOCK_FILTER_PILLS} active={stockPill} onChange={setStockPill} />
           {stocksQ.isLoading ? (
             <Loading />
-          ) : stocksQ.isError ? (
-            <ErrorMsg msg="Could not load live stock quotes" />
           ) : (
             <MarketStockCards rows={sortedStocks} onPick={(r) => openTrade(r, "stocks")} />
           )}

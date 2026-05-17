@@ -9,6 +9,39 @@ export type MarketRow = {
   yieldPct?: number;
 };
 
+export const FALLBACK_STOCKS: MarketRow[] = [
+  { id: "aapl", name: "Apple", symbol: "AAPL", price: 227.42, change24h: 1.24 },
+  { id: "msft", name: "Microsoft", symbol: "MSFT", price: 418.65, change24h: -0.42 },
+  { id: "nvda", name: "NVIDIA", symbol: "NVDA", price: 892.1, change24h: 2.88 },
+  { id: "googl", name: "Alphabet", symbol: "GOOGL", price: 171.3, change24h: 0.65 },
+  { id: "amzn", name: "Amazon", symbol: "AMZN", price: 198.4, change24h: -1.1 },
+  { id: "meta", name: "Meta Platforms", symbol: "META", price: 512.8, change24h: 1.95 },
+  { id: "tsla", name: "Tesla", symbol: "TSLA", price: 248.5, change24h: -2.15 },
+  { id: "brk-b", name: "Berkshire Hathaway", symbol: "BRK-B", price: 468.2, change24h: 0.32 },
+  { id: "jpm", name: "JPMorgan Chase", symbol: "JPM", price: 198.7, change24h: 0.88 },
+  { id: "v", name: "Visa", symbol: "V", price: 278.4, change24h: -0.21 },
+  { id: "unh", name: "UnitedHealth", symbol: "UNH", price: 512.3, change24h: -0.55 },
+  { id: "xom", name: "Exxon Mobil", symbol: "XOM", price: 118.2, change24h: 1.12 },
+  { id: "lly", name: "Eli Lilly", symbol: "LLY", price: 782.5, change24h: 0.94 },
+  { id: "avgo", name: "Broadcom", symbol: "AVGO", price: 168.4, change24h: 1.45 },
+  { id: "ma", name: "Mastercard", symbol: "MA", price: 478.9, change24h: 0.38 },
+  { id: "hd", name: "Home Depot", symbol: "HD", price: 368.2, change24h: -0.62 },
+  { id: "pg", name: "Procter & Gamble", symbol: "PG", price: 165.8, change24h: 0.15 },
+  { id: "cost", name: "Costco", symbol: "COST", price: 812.4, change24h: 0.72 },
+  { id: "nflx", name: "Netflix", symbol: "NFLX", price: 628.5, change24h: 1.88 },
+  { id: "amd", name: "AMD", symbol: "AMD", price: 168.2, change24h: 2.42 },
+  { id: "crm", name: "Salesforce", symbol: "CRM", price: 298.4, change24h: -0.88 },
+  { id: "orcl", name: "Oracle", symbol: "ORCL", price: 142.6, change24h: 0.55 },
+  { id: "adbe", name: "Adobe", symbol: "ADBE", price: 528.3, change24h: -1.22 },
+  { id: "intc", name: "Intel", symbol: "INTC", price: 22.48, change24h: 0.92 },
+  { id: "dis", name: "Walt Disney", symbol: "DIS", price: 112.4, change24h: -0.45 },
+  { id: "spy", name: "SPDR S&P 500 ETF", symbol: "SPY", price: 528.4, change24h: -0.38 },
+  { id: "qqq", name: "Invesco QQQ", symbol: "QQQ", price: 458.2, change24h: -0.72 },
+  { id: "iwm", name: "iShares Russell 2000", symbol: "IWM", price: 208.5, change24h: -0.55 },
+  { id: "dia", name: "SPDR Dow Jones ETF", symbol: "DIA", price: 392.8, change24h: -0.28 },
+  { id: "voo", name: "Vanguard S&P 500 ETF", symbol: "VOO", price: 486.2, change24h: -0.35 },
+];
+
 export const HARDCODED_OPTIONS: MarketRow[] = [
   { id: "spx", name: "S&P 500 Index", symbol: "SPX", price: 5920.5, change24h: -1.24 },
   { id: "ndx", name: "NASDAQ 100 Index", symbol: "NDX", price: 21480.2, change24h: -1.87 },

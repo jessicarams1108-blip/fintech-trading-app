@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ChevronRight, Settings2, Share2, Square } from "lucide-react";
 import clsx from "clsx";
 import { intervalToDuration } from "date-fns";
@@ -10,12 +10,10 @@ import {
   fetchAiBalance,
   fetchAiHistory,
   formatTradeResult,
-  startAiTrade,
 } from "@/lib/aiTradingApi";
 import { AiTradingTopBar } from "@/components/ai-trading/AiTradingTopBar";
 import { AiTradingUnderlineTabs } from "@/components/ai-trading/AiTradingUnderlineTabs";
 import { FakeLiveChart } from "@/components/ai-trading/FakeLiveChart";
-import { StartTradeModal } from "@/components/ai-trading/StartTradeModal";
 import { ai } from "@/lib/aiTradingTheme";
 
 const PORTFOLIO_TABS = ["Return", "Income", "Account value", "Allocation"] as const;
@@ -33,11 +31,9 @@ function weekCountdown(ms: number): string {
 
 export function AiTradingPortfolioPage() {
   const { token } = useAuth();
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState<(typeof PORTFOLIO_TABS)[number]>("Return");
   const [range, setRange] = useState<(typeof RANGES)[number]>("1M");
-  const [tradeOpen, setTradeOpen] = useState(false);
   const [depositAmt, setDepositAmt] = useState("");
   const [showDeposit, setShowDeposit] = useState(false);
 
@@ -95,14 +91,12 @@ export function AiTradingPortfolioPage() {
               View active trade
             </Link>
           ) : (
-            <button
-              type="button"
-              disabled={!bal?.canTrade || balance < (bal?.minTradeUsd ?? 100)}
-              onClick={() => setTradeOpen(true)}
-              className="pointer-events-auto rounded-full bg-white px-8 py-3 text-[15px] font-semibold text-black shadow-lg disabled:opacity-40"
+            <Link
+              to="/ai-trading/markets"
+              className="pointer-events-auto rounded-full bg-white px-8 py-3 text-[15px] font-semibold text-black shadow-lg"
             >
               Start investing
-            </button>
+            </Link>
           )}
         </div>
       </div>
@@ -185,7 +179,7 @@ export function AiTradingPortfolioPage() {
       >
         <p className="text-sm font-semibold text-white">AI Agent Trading</p>
         <p className="mt-1 text-xs leading-relaxed text-[#8E8E93]">
-          Deposit, pick crypto, stocks, options, or bonds — the agent trades while admin settles profit or loss.
+          Deposit, pick crypto, stocks, options, or bonds — the agent trades while you relax and make profit.
         </p>
         <Link to="/ai-trading/markets" className="mt-3 inline-flex items-center text-sm font-medium text-oove-blue">
           Browse markets <ChevronRight className="h-4 w-4" />
@@ -232,23 +226,6 @@ export function AiTradingPortfolioPage() {
         </div>
       </div>
 
-      <p className="mx-4 mt-6 text-[10px] leading-relaxed text-[#8E8E93]">
-        Simulated trading. Results controlled by admin. Not financial advice.
-      </p>
-
-      <StartTradeModal
-        open={tradeOpen}
-        onClose={() => setTradeOpen(false)}
-        balance={balance}
-        minAmount={bal?.minTradeUsd ?? 100}
-        canTrade={!!bal?.canTrade}
-        onSubmit={async (p) => {
-          const trade = await startAiTrade(token!, p);
-          void qc.invalidateQueries({ queryKey: ["ai-balance"] });
-          void qc.invalidateQueries({ queryKey: ["ai-history"] });
-          navigate(`/ai-trading/trade/${trade.id}`);
-        }}
-      />
     </div>
   );
 }
