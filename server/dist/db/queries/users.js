@@ -141,3 +141,39 @@ export async function findVerifiedUserByEmail(normalizedEmail) {
 export async function updateUserNames(userId, firstName, lastName) {
     await pool.query(`UPDATE users SET first_name = $2::text, last_name = $3::text WHERE id = $1::uuid`, [userId, firstName, lastName]);
 }
+export async function isUsernameAvailableForUser(username, excludeUserId) {
+    const u = username.trim().toLowerCase();
+    if (u.length < 3 || isReservedUsername(u))
+        return false;
+    const res = await pool.query(`SELECT 1 FROM users WHERE LOWER(username) = $1 AND id <> $2::uuid LIMIT 1`, [
+        u,
+        excludeUserId,
+    ]);
+    return (res.rowCount ?? 0) === 0;
+}
+export async function updateUsername(userId, username) {
+    const u = username.trim().toLowerCase();
+    await pool.query(`UPDATE users SET username = $2::text WHERE id = $1::uuid`, [userId, u]);
+}
+export function formatUserFullName(firstName, lastName) {
+    return [firstName, lastName].filter((p) => p && p.trim().length > 0).join(" ").trim();
+}
+export function toUserProfile(row) {
+    return {
+        id: row.id,
+        email: row.email,
+        username: row.username,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        fullName: formatUserFullName(row.first_name, row.last_name),
+    };
+}
+export function parseFullName(fullName) {
+    const trimmed = fullName.trim();
+    if (!trimmed)
+        return { firstName: null, lastName: null };
+    const parts = trimmed.split(/\s+/);
+    if (parts.length === 1)
+        return { firstName: parts[0], lastName: null };
+    return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+}

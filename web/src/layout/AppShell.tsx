@@ -17,6 +17,7 @@ const sidebarMainNav: NavDescriptor[] = [
   { to: "/dashboard", label: "Home" },
   { to: "/borrow", label: "Borrow" },
   { to: "/portfolio", label: "Portfolio" },
+  { to: "/fixed-plans", label: "Fixed savings" },
   { to: "/watchlist", label: "Watchlist" },
   { to: "/history", label: "History" },
 ];
@@ -25,6 +26,7 @@ const sidebarAdminNav: NavDescriptor[] = [
   { to: "/admin/console", label: "Admin · Console", adminOnly: true },
   { to: "/admin/deposits", label: "Admin · Deposits", adminOnly: true },
   { to: "/admin/identity", label: "Admin · Identity", adminOnly: true },
+  { to: "/admin/fixed-savings", label: "Admin · Fixed savings", adminOnly: true },
 ];
 
 function HamburgerIcon({ open }: { open: boolean }) {

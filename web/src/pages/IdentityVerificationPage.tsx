@@ -6,7 +6,14 @@ import {
   type IdentityStatusDto,
   type VerificationState,
 } from "@/lib/identityApi";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import {
+  COUNTRIES,
+  SOURCE_OF_FUNDS_OPTIONS,
+  countryNameByCode,
+  sourceOfFundsLabel,
+  subdivisionsForCountry,
+} from "@/lib/kycFormOptions";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
@@ -49,11 +56,22 @@ export function IdentityVerificationPage() {
   const [city, setCity] = useState("");
   const [stateProvince, setStateProvince] = useState("");
   const [postalCode, setPostalCode] = useState("");
-  const [country, setCountry] = useState("");
+  const [countryCode, setCountryCode] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  const [nationality, setNationality] = useState("");
+  const [nationalityCode, setNationalityCode] = useState("");
   const [occupation, setOccupation] = useState("");
-  const [sourceOfFunds, setSourceOfFunds] = useState("");
+  const [sourceOfFundsKey, setSourceOfFundsKey] = useState("");
+  const [sourceOfFundsOther, setSourceOfFundsOther] = useState("");
+
+  const addressSubdivisions = useMemo(
+    () => (countryCode ? subdivisionsForCountry(countryCode) : []),
+    [countryCode],
+  );
+  const hasStateList = addressSubdivisions.length > 0;
+
+  useEffect(() => {
+    setStateProvince("");
+  }, [countryCode]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -107,6 +125,33 @@ export function IdentityVerificationPage() {
       showToast("Enter the last 4 digits of your SSN");
       return;
     }
+    const countryName = countryNameByCode(countryCode);
+    if (!countryName) {
+      showToast("Select your country");
+      return;
+    }
+    if (!stateProvince.trim()) {
+      showToast(hasStateList ? "Select your state or province" : "Enter your state or province");
+      return;
+    }
+    const nationalityName = countryNameByCode(nationalityCode);
+    if (!nationalityName) {
+      showToast("Select your nationality");
+      return;
+    }
+    if (!sourceOfFundsKey) {
+      showToast("Select your source of funds");
+      return;
+    }
+    if (sourceOfFundsKey === "other" && sourceOfFundsOther.trim().length < 3) {
+      showToast("Describe your source of funds (min 3 characters)");
+      return;
+    }
+    const sourceOfFunds =
+      sourceOfFundsKey === "other"
+        ? `Other: ${sourceOfFundsOther.trim()}`
+        : sourceOfFundsLabel(sourceOfFundsKey);
+
     setSubmitting(true);
     try {
       const idFileBase64 = await fileToBase64(idFile);
@@ -122,11 +167,11 @@ export function IdentityVerificationPage() {
         city: city.trim(),
         stateProvince: stateProvince.trim(),
         postalCode: postalCode.trim(),
-        country: country.trim(),
+        country: countryName,
         ...(dateOfBirth.trim() ? { dateOfBirth: dateOfBirth.trim() } : {}),
-        ...(nationality.trim() ? { nationality: nationality.trim() } : {}),
+        nationality: nationalityName,
         ...(occupation.trim() ? { occupation: occupation.trim() } : {}),
-        ...(sourceOfFunds.trim() ? { sourceOfFunds: sourceOfFunds.trim() } : {}),
+        sourceOfFunds,
       });
       showToast(result.message, "success");
       await load();
@@ -284,50 +329,92 @@ export function IdentityVerificationPage() {
               <label className={labelClass} htmlFor="street">
                 Street
               </label>
-              <input id="street" className={`${fieldClass} mt-1.5`} value={street} onChange={(e) => setStreet(e.target.value)} />
+              <input
+                id="street"
+                className={`${fieldClass} mt-1.5`}
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="country">
+                Country
+              </label>
+              <select
+                id="country"
+                className={`${fieldClass} mt-1.5`}
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                required
+              >
+                <option value="">Select country</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass} htmlFor="city">
                   City
                 </label>
-                <input id="city" className={`${fieldClass} mt-1.5`} value={city} onChange={(e) => setCity(e.target.value)} />
+                <input
+                  id="city"
+                  className={`${fieldClass} mt-1.5`}
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  required
+                />
               </div>
               <div>
                 <label className={labelClass} htmlFor="state-province">
                   State / province
                 </label>
-                <input
-                  id="state-province"
-                  className={`${fieldClass} mt-1.5`}
-                  value={stateProvince}
-                  onChange={(e) => setStateProvince(e.target.value)}
-                />
+                {hasStateList ? (
+                  <select
+                    id="state-province"
+                    className={`${fieldClass} mt-1.5`}
+                    value={stateProvince}
+                    onChange={(e) => setStateProvince(e.target.value)}
+                    disabled={!countryCode}
+                    required
+                  >
+                    <option value="">
+                      {countryCode ? "Select state / province" : "Select country first"}
+                    </option>
+                    {addressSubdivisions.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id="state-province"
+                    className={`${fieldClass} mt-1.5`}
+                    value={stateProvince}
+                    onChange={(e) => setStateProvince(e.target.value)}
+                    placeholder={countryCode ? "Enter state or province" : "Select country first"}
+                    disabled={!countryCode}
+                    required
+                  />
+                )}
               </div>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className={labelClass} htmlFor="postal-code">
-                  Postal code
-                </label>
-                <input
-                  id="postal-code"
-                  className={`${fieldClass} mt-1.5`}
-                  value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className={labelClass} htmlFor="country">
-                  Country
-                </label>
-                <input
-                  id="country"
-                  className={`${fieldClass} mt-1.5`}
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                />
-              </div>
+            <div>
+              <label className={labelClass} htmlFor="postal-code">
+                Postal code
+              </label>
+              <input
+                id="postal-code"
+                className={`${fieldClass} mt-1.5`}
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+                required
+              />
             </div>
           </fieldset>
 
@@ -349,12 +436,20 @@ export function IdentityVerificationPage() {
               <label className={labelClass} htmlFor="nationality">
                 Nationality
               </label>
-              <input
+              <select
                 id="nationality"
                 className={`${fieldClass} mt-1.5`}
-                value={nationality}
-                onChange={(e) => setNationality(e.target.value)}
-              />
+                value={nationalityCode}
+                onChange={(e) => setNationalityCode(e.target.value)}
+                required
+              >
+                <option value="">Select nationality</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className={labelClass} htmlFor="occupation">
@@ -371,12 +466,30 @@ export function IdentityVerificationPage() {
               <label className={labelClass} htmlFor="source-of-funds">
                 Source of funds
               </label>
-              <input
+              <select
                 id="source-of-funds"
                 className={`${fieldClass} mt-1.5`}
-                value={sourceOfFunds}
-                onChange={(e) => setSourceOfFunds(e.target.value)}
-              />
+                value={sourceOfFundsKey}
+                onChange={(e) => setSourceOfFundsKey(e.target.value)}
+                required
+              >
+                <option value="">Select source of funds</option>
+                {SOURCE_OF_FUNDS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {sourceOfFundsKey === "other" ? (
+                <input
+                  id="source-of-funds-other"
+                  className={`${fieldClass} mt-2`}
+                  value={sourceOfFundsOther}
+                  onChange={(e) => setSourceOfFundsOther(e.target.value)}
+                  placeholder="Please describe your source of funds"
+                  required
+                />
+              ) : null}
             </div>
           </fieldset>
 
@@ -411,8 +524,8 @@ export function IdentityVerificationPage() {
       ) : null}
 
       <p className="text-center text-sm">
-        <Link to="/dashboard" className="font-semibold text-oove-blue hover:underline">
-          ← Back to home
+        <Link to="/settings" className="font-semibold text-oove-blue hover:underline">
+          ← Back to account settings
         </Link>
       </p>
     </div>

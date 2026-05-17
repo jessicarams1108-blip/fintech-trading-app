@@ -1,6 +1,6 @@
 import { pool } from "../index.js";
 import { STATIC_USD } from "../../lib/market.js";
-import { isPgUndefinedColumn } from "../../lib/pgErrors.js";
+import { isPgUndefinedColumn, rethrowPgSchemaError } from "../../lib/pgErrors.js";
 const ORACLE_USD = STATIC_USD;
 export async function getUserWallets(userId) {
     const res = await pool.query(`SELECT currency, balance::text AS balance FROM wallets WHERE user_id = $1::uuid`, [userId]);
@@ -36,9 +36,27 @@ export async function getUserKyc(userId) {
     }
 }
 export async function setKycPending(userId) {
-    await pool.query(`UPDATE users SET kyc_status = 'pending', kyc_tier = 0 WHERE id = $1::uuid`, [userId]);
+    try {
+        await pool.query(`UPDATE users SET kyc_status = 'pending', kyc_tier = 0 WHERE id = $1::uuid`, [userId]);
+    }
+    catch (err) {
+        rethrowPgSchemaError(err);
+    }
+}
+export async function setKycRejected(userId) {
+    try {
+        await pool.query(`UPDATE users SET kyc_status = 'rejected', kyc_tier = 0 WHERE id = $1::uuid`, [userId]);
+    }
+    catch (err) {
+        rethrowPgSchemaError(err);
+    }
 }
 export async function setKycVerifiedDemo(userId, tier) {
     const t = Math.min(3, Math.max(1, Math.floor(tier)));
-    await pool.query(`UPDATE users SET kyc_status = 'verified', kyc_tier = $2::smallint WHERE id = $1::uuid`, [userId, t]);
+    try {
+        await pool.query(`UPDATE users SET kyc_status = 'verified', kyc_tier = $2::smallint WHERE id = $1::uuid`, [userId, t]);
+    }
+    catch (err) {
+        rethrowPgSchemaError(err);
+    }
 }

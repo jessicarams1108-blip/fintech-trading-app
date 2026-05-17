@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { authenticateRequired } from "../middleware/auth.js";
 import { env } from "../env.js";
-import { getUserKyc, setKycPending, setKycVerifiedDemo } from "../db/queries/liquidity.js";
+import { getUserKyc, setKycVerifiedDemo } from "../db/queries/liquidity.js";
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 30,
@@ -21,21 +21,22 @@ kycRouter.post("/submit", limiter, authenticateRequired, async (req, res) => {
         res.status(409).json({ error: "A verification request is already pending review." });
         return;
     }
-    await setKycPending(req.user.id);
-    res.json({ message: "Verification submitted. Our team will review your documents.", kycStatus: "pending" });
+    res.status(400).json({
+        error: "Use the identity verification form at /verify-identity to submit your documents and details.",
+    });
 });
 const demoSchema = z.object({
     tier: z.coerce.number().int().min(1).max(3).default(2),
 });
 kycRouter.post("/demo-verify", limiter, authenticateRequired, async (req, res) => {
     if (!env.OOVE_DEMO_KYC) {
-        res.status(403).json({ error: "Demo verification is disabled on this server." });
+        res.status(403).json({ error: "Test verification is disabled on this server." });
         return;
     }
     const parsed = demoSchema.safeParse(req.body ?? {});
     const tier = parsed.success ? parsed.data.tier : 2;
     await setKycVerifiedDemo(req.user.id, tier);
-    res.json({ message: "Demo identity verified.", kycStatus: "verified", kycTier: tier });
+    res.json({ message: "Identity verified.", kycStatus: "verified", kycTier: tier });
 });
 kycRouter.get("/status", limiter, authenticateRequired, async (req, res) => {
     const kyc = await getUserKyc(req.user.id);

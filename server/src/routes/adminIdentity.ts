@@ -7,7 +7,9 @@ import {
   listPendingIdentitySubmissions,
   rejectIdentitySubmission,
   submissionUserFullName,
+  type IdentitySubmissionListWithUser,
 } from "../db/queries/identityVerification.js";
+import { getIdentitySchemaStatus } from "../lib/dbSchema.js";
 import { getKycDocumentViewUrl } from "../lib/kycDocumentStorage.js";
 import { sendKycApprovedEmail, sendKycRejectedEmail } from "../lib/mail.js";
 
@@ -21,7 +23,24 @@ function formatAddress(row: {
   return [row.street, row.city, row.state_province, row.postal_code, row.country].filter(Boolean).join(", ");
 }
 
-function mapSubmissionDto(row: Awaited<ReturnType<typeof listPendingIdentitySubmissions>>[number]) {
+function normalizeVendorFields(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return {};
+}
+
+function mapSubmissionDto(row: IdentitySubmissionListWithUser) {
   return {
     id: row.id,
     userId: row.user_id,
@@ -41,10 +60,10 @@ function mapSubmissionDto(row: Awaited<ReturnType<typeof listPendingIdentitySubm
     idDocType: row.id_doc_type,
     idFileName: row.id_file_name,
     idContentType: row.id_content_type,
-    vendorFields: row.vendor_fields ?? {},
+    vendorFields: normalizeVendorFields(row.vendor_fields),
     submittedAt:
       row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
-    hasInlineDocument: Boolean(row.id_document_base64),
+    hasInlineDocument: Boolean(row.has_inline_document),
     idViewUrl: null as string | null,
   };
 }
@@ -55,12 +74,24 @@ export function createAdminIdentityRoutes(): Router {
 
   router.get("/identity-verifications/pending", async (_req, res, next) => {
     try {
+      const schema = await getIdentitySchemaStatus();
+      if (!schema.ready) {
+        res.status(503).json({
+          error: schema.message ?? "Identity verification database is not ready.",
+        });
+        return;
+      }
+
       const rows = await listPendingIdentitySubmissions();
       const data = await Promise.all(
         rows.map(async (row) => {
           const dto = mapSubmissionDto(row);
-          if (!row.id_document_base64) {
-            dto.idViewUrl = await getKycDocumentViewUrl(row.id_storage_key);
+          if (!row.has_inline_document) {
+            try {
+              dto.idViewUrl = await getKycDocumentViewUrl(row.id_storage_key);
+            } catch (e) {
+              console.warn("[admin identity] document URL failed for", row.id, e);
+            }
           }
           return dto;
         }),

@@ -11,6 +11,8 @@ import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeTog
 import { MarketOverviewPanel } from "@/components/MarketOverviewPanel";
 import { DepositUsdAmountPicker } from "@/components/DepositUsdAmountPicker";
 import { apiFetch } from "@/lib/apiBase";
+import { fetchFixedSavingsSummary } from "@/lib/fixedSavingsApi";
+import { formatUsd } from "@/lib/fixedSavingsUtils";
 
 const MIN_DEPOSIT_USD = 100;
 const DASHBOARD_ASSETS: AssetSymbol[] = ["BTC", "ETH", "USDT"];
@@ -247,6 +249,13 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
     refetchInterval: 25_000,
   });
 
+  const fixedQ = useQuery({
+    queryKey: ["fixed-savings-summary", token],
+    enabled: !!token,
+    queryFn: () => fetchFixedSavingsSummary(token!),
+    refetchInterval: 30_000,
+  });
+
   const btcUsdSpot = useMemo(() => {
     const row = (topQ.data ?? []).find((t) => t.symbol === "BTC");
     const px = row?.priceUsd;
@@ -254,6 +263,7 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
   }, [topQ.data]);
 
   const total = summaryQ.data?.totalValueUsd ?? 0;
+  const fixedTotal = fixedQ.data?.activeTotalUsd ?? 0;
   const chg = summaryQ.data?.change24hPct ?? 0;
   const holdingsSortedByValue = useMemo(() => {
     const rows = [...(holdingsQ.data ?? [])];
@@ -303,6 +313,7 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-start gap-2">
                   <BalanceVisibilityEyeToggle className="mt-0.5" />
@@ -325,6 +336,25 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
                   </div>
                 </div>
               </div>
+              <Link
+                to="/fixed-plans"
+                className="rounded-2xl border border-violet-200 bg-violet-50/40 p-5 shadow-sm transition hover:border-violet-300"
+              >
+                <div className="flex items-start gap-2">
+                  <BalanceVisibilityEyeToggle className="mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-violet-700">Fixed savings</p>
+                    <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
+                      <MaskedValue>{formatUsd(fixedTotal)}</MaskedValue>
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-violet-600">View plans →</p>
+                    {fixedQ.isError ? (
+                      <p className="mt-2 text-sm text-red-600">{(fixedQ.error as Error).message}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </Link>
+            </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 shadow-inner">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Market assets (USD)</p>
               {topQ.isError ? (

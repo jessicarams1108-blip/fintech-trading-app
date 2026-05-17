@@ -68,7 +68,6 @@ export function DashboardPage() {
 
   const supplied = summary?.suppliedUsd ?? 0;
   const maxBorrow = summary?.maxBorrowUsd ?? 0;
-  const kycLabel = summary?.kycStatus ?? "—";
   const hasPendingDeposit = depositRows.some((r) => r.status === "pending_review");
 
   const nextSteps = useMemo(() => {
@@ -81,21 +80,6 @@ export function DashboardPage() {
         title: "Deposit in review",
         detail:
           "Operations is verifying your latest proof. Activity will show Confirmed when your wallet is credited.",
-      });
-    }
-    if (summary.kycStatus !== "verified" || summary.kycTier < 1) {
-      out.push({
-        done: false,
-        title: "Verify your identity",
-        detail: "Borrowing requires a verified profile and at least Tier 1.",
-        to: "/verify-identity",
-        cta: "Identity",
-      });
-    } else {
-      out.push({
-        done: true,
-        title: "Identity verification",
-        detail: `Status: ${summary.kycStatus}, Tier ${summary.kycTier}.`,
       });
     }
     if (summary.suppliedUsd < summary.minSuppliedUsdToBorrow) {
@@ -138,11 +122,11 @@ export function DashboardPage() {
         <span className="font-medium text-slate-800">
           {summary?.minSuppliedUsdToBorrow.toLocaleString("en-US", { style: "currency", currency: "USD" }) ?? "$10,000"}
         </span>{" "}
-        supplied (USD equivalent) and successful{" "}
-        <Link className="font-semibold text-oove-blue underline" to="/verify-identity">
-          identity verification
+        supplied (USD equivalent) and successful identity verification (under{" "}
+        <Link className="font-semibold text-oove-blue underline" to="/settings">
+          Settings → Account
         </Link>
-        . Each <span className="font-medium text-slate-800">single deposit</span> you declare must be at least{" "}
+        ). Each <span className="font-medium text-slate-800">single deposit</span> you declare must be at least{" "}
         <span className="font-medium text-slate-800">$100</span> USD equivalent — that minimum is separate from the
         $10,000 cumulative “integrity” bar to unlock borrowing.
       </p>
@@ -158,9 +142,6 @@ export function DashboardPage() {
           className="inline-flex rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
         >
           Borrow
-        </Link>
-        <Link to="/verify-identity" className="inline-flex rounded-full px-5 py-2.5 text-sm font-semibold text-oove-blue hover:underline">
-          Verify identity
         </Link>
       </div>
     </div>
@@ -258,8 +239,7 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Borrow rules (Oove)</h2>
           <ul className="mt-4 list-inside list-disc space-y-2 text-sm text-slate-600">
             <li>
@@ -286,25 +266,6 @@ export function DashboardPage() {
               </ul>
             </div>
           ) : null}
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Identity</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Status: <span className="font-semibold capitalize text-slate-900">{kycLabel}</span>
-            {summary != null ? (
-              <>
-                {" "}
-                · Tier <span className="font-semibold">{summary.kycTier}</span>
-              </>
-            ) : null}
-          </p>
-          <Link
-            to="/verify-identity"
-            className="mt-5 inline-flex w-full justify-center rounded-full border border-slate-200 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-          >
-            Manage verification
-          </Link>
-        </div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">

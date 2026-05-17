@@ -6,10 +6,11 @@ import { getUserKyc, setKycPending } from "../db/queries/liquidity.js";
 import { findUserById } from "../db/queries/users.js";
 import { pool } from "../db/index.js";
 import {
-  createIdentitySubmission,
+  createIdentitySubmissionAndMarkPending,
   getLatestSubmissionForUser,
   resolveEffectiveVerificationState,
 } from "../db/queries/identityVerification.js";
+import { getIdentitySchemaStatus } from "../lib/dbSchema.js";
 import { isKycDocumentS3Enabled, uploadKycDocument } from "../lib/kycDocumentStorage.js";
 
 const limiter = rateLimit({ windowMs: 60 * 1000, limit: 40, standardHeaders: true, legacyHeaders: false });
@@ -109,6 +110,14 @@ identityRouter.post("/submit", limiter, async (req, res, next) => {
   }
 
   try {
+    const schema = await getIdentitySchemaStatus();
+    if (!schema.ready) {
+      res.status(503).json({
+        error: schema.message ?? "Identity verification database is not ready.",
+      });
+      return;
+    }
+
     const userId = req.user!.id;
     const kyc = await getUserKyc(userId);
     if (kyc.kyc_status === "verified") {
@@ -160,7 +169,7 @@ identityRouter.post("/submit", limiter, async (req, res, next) => {
       idDocumentBase64 = parsed.data.idFileBase64;
     }
 
-    const submission = await createIdentitySubmission({
+    const submission = await createIdentitySubmissionAndMarkPending({
       userId,
       idDocType: parsed.data.idDocType,
       idStorageKey,
@@ -178,8 +187,6 @@ identityRouter.post("/submit", limiter, async (req, res, next) => {
       country: parsed.data.country,
       vendorFields,
     });
-
-    await setKycPending(userId);
 
     try {
       await pool.query(

@@ -4,7 +4,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { authenticateRequired, signAccessToken, verifyAccessToken, } from "../middleware/auth.js";
 import { env } from "../env.js";
-import { createPendingUser, deleteUserById, ensureUserByEmail, findUserByEmail, findUserByEmailForLogin, findUserById, findPendingVerificationByEmail, isReservedUsername, isUsernameAvailable, markUserVerified, setUserOtp, } from "../db/queries/users.js";
+import { createPendingUser, deleteUserById, ensureUserByEmail, findUserByEmail, findUserByEmailForLogin, findUserById, findPendingVerificationByEmail, isReservedUsername, isUsernameAvailable, markUserVerified, setUserOtp, toUserProfile, } from "../db/queries/users.js";
 import { ensureStarterWalletsForUser } from "../db/queries/wallets.js";
 import { generateSixDigitOtp, hashOtp, verifyOtpHash } from "../lib/otp.js";
 import { mailFailureMessage, sendVerificationEmail } from "../lib/mail.js";
@@ -153,9 +153,11 @@ authRouter.post("/verify", authLimiter, async (req, res) => {
     }
     await markUserVerified(userId);
     await ensureStarterWalletsForUser(userId);
-    const token = signAccessToken({ id: row.id, email: row.email });
+    const verified = (await findUserById(userId)) ?? row;
+    const profile = toUserProfile(verified);
+    const token = signAccessToken({ id: profile.id, email: profile.email });
     void createSession({
-        userId: row.id,
+        userId: profile.id,
         userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
         ipAddress: typeof req.headers["x-forwarded-for"] === "string"
             ? req.headers["x-forwarded-for"].split(",")[0]?.trim()
@@ -163,7 +165,7 @@ authRouter.post("/verify", authLimiter, async (req, res) => {
     });
     res.json({
         token,
-        user: { id: row.id, email: row.email },
+        user: profile,
     });
 });
 const sendVerificationByEmailSchema = z.object({
@@ -272,15 +274,21 @@ authRouter.post("/login", authLimiter, async (req, res) => {
         return;
     }
     await ensureStarterWalletsForUser(row.id);
-    const token = signAccessToken({ id: row.id, email: row.email });
+    const full = (await findUserById(row.id)) ?? null;
+    if (!full) {
+        res.status(500).json({ error: "User record missing" });
+        return;
+    }
+    const profile = toUserProfile(full);
+    const token = signAccessToken({ id: profile.id, email: profile.email });
     void createSession({
-        userId: row.id,
+        userId: profile.id,
         userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
         ipAddress: typeof req.headers["x-forwarded-for"] === "string" ? req.headers["x-forwarded-for"].split(",")[0]?.trim() : req.socket.remoteAddress ?? null,
     });
     res.json({
         token,
-        user: { id: row.id, email: row.email },
+        user: profile,
     });
 });
 authRouter.post("/session", authLimiter, async (req, res) => {
@@ -294,9 +302,15 @@ authRouter.post("/session", authLimiter, async (req, res) => {
     try {
         const user = await ensureUserByEmail(rawEmail);
         await ensureStarterWalletsForUser(user.id);
-        const token = signAccessToken({ id: user.id, email: user.email });
+        const full = (await findUserById(user.id)) ?? null;
+        if (!full) {
+            res.status(500).json({ error: "User record missing" });
+            return;
+        }
+        const profile = toUserProfile(full);
+        const token = signAccessToken({ id: profile.id, email: profile.email });
         void createSession({
-            userId: user.id,
+            userId: profile.id,
             userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
             ipAddress: typeof req.headers["x-forwarded-for"] === "string"
                 ? req.headers["x-forwarded-for"].split(",")[0]?.trim()
@@ -304,10 +318,7 @@ authRouter.post("/session", authLimiter, async (req, res) => {
         });
         res.json({
             token,
-            user: {
-                id: user.id,
-                email: user.email,
-            },
+            user: profile,
         });
     }
     catch (err) {
@@ -319,7 +330,7 @@ authRouter.post("/session", authLimiter, async (req, res) => {
         res.status(400).json({ error: "Unable to mint session token" });
     }
 });
-authRouter.get("/me", (req, res) => {
+authRouter.get("/me", async (req, res) => {
     const header = req.header("authorization");
     const bearer = header?.startsWith("Bearer ") ? header.slice(7).trim() : undefined;
     if (!bearer) {
@@ -327,8 +338,13 @@ authRouter.get("/me", (req, res) => {
         return;
     }
     try {
-        const user = verifyAccessToken(bearer);
-        res.json({ user });
+        const claims = verifyAccessToken(bearer);
+        const row = await findUserById(claims.id);
+        if (!row) {
+            res.status(404).json({ error: "User not found" });
+            return;
+        }
+        res.json({ user: toUserProfile(row) });
     }
     catch {
         res.status(401).json({ error: "Invalid token" });

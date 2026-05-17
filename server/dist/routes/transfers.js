@@ -22,7 +22,7 @@ transfersRouter.get("/deposit/address", limiter, (req, res) => {
         data: {
             asset: raw,
             address,
-            note: "Demo treasury routing — ERC-20 stables share the dev contract address in this build.",
+            note: "Treasury routing preview. ERC-20 stables share the dev contract address in this build.",
         },
     });
 });

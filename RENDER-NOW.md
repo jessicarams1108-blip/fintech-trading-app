@@ -30,7 +30,10 @@ If **two** full Render tries fail, say **"Render failed twice"** in chat — we 
 
    ```bash
    npm run db:schema -w server
+   npm run db:migrate -w server
    ```
+
+   (`db:migrate` adds identity verification and other incremental tables; safe to re-run.)
 
 2. Open in browser (your URL may differ slightly):
 
@@ -69,7 +72,7 @@ If **two** full Render tries fail, say **"Render failed twice"** in chat — we 
    - `NODE_VERSION` = `20`
    - **Do not set `PORT`**
 
-5. Deploy → Shell → `npm run db:schema -w server` → test `/health` → update Vercel `VITE_API_URL`.
+5. Deploy → Shell → `npm run db:schema -w server` then `npm run db:migrate -w server` → test `/health` (check `identityVerification.ready: true`) → update Vercel `VITE_API_URL`.
 
 ---
 

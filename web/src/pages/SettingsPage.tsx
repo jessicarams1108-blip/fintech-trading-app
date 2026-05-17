@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import clsx from "clsx";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/state/AuthContext";
+import { fetchIdentityStatus, type VerificationState } from "@/lib/identityApi";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
 import { useToast } from "@/state/ToastContext";
 import { useTheme } from "@/state/ThemeContext";
@@ -46,6 +48,13 @@ function fieldClass() {
 
 function labelClass() {
   return "text-sm font-medium text-slate-800 dark:text-slate-200";
+}
+
+function identityStatusLabel(state: VerificationState): string {
+  if (state === "approved") return "Approved";
+  if (state === "pending") return "Pending review";
+  if (state === "rejected") return "Rejected";
+  return "Not submitted";
 }
 
 function ThemeToggle() {
@@ -99,6 +108,12 @@ export function SettingsPage() {
     queryKey: ["settings", "profile", token],
     enabled: !!token,
     queryFn: () => fetchProfile(token!),
+  });
+
+  const identityQ = useQuery({
+    queryKey: ["identity", "status", token],
+    enabled: !!token && tab === "account",
+    queryFn: () => fetchIdentityStatus(token!),
   });
 
   const registeredProfile = useMemo(() => readRegisteredProfile(user?.id), [profileQ.dataUpdatedAt, user?.id]);
@@ -358,6 +373,50 @@ export function SettingsPage() {
                   />
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Signed-in account email (read only)</p>
                 </div>
+
+                <div
+                  id="identity-verification"
+                  className="scroll-mt-24 border-t border-slate-200 pt-6 dark:border-slate-700"
+                >
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">Identity verification</h3>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                    Required for borrowing. Submit your government ID and details for review.
+                  </p>
+                  {identityQ.isLoading ? (
+                    <div className="mt-4 space-y-2">
+                      <SkeletonLine className="h-4 w-32" />
+                      <SkeletonLine className="h-10 w-full max-w-xs" />
+                    </div>
+                  ) : identityQ.isError ? (
+                    <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+                      {(identityQ.error as Error).message}
+                    </p>
+                  ) : identityQ.data ? (
+                    <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="text-slate-500 dark:text-slate-400">Status</dt>
+                        <dd className="font-medium capitalize text-slate-900 dark:text-slate-100">
+                          {identityStatusLabel(identityQ.data.verificationState)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-slate-500 dark:text-slate-400">Tier</dt>
+                        <dd className="font-medium text-slate-900 dark:text-slate-100">{identityQ.data.kycTier}</dd>
+                      </div>
+                    </dl>
+                  ) : null}
+                  <Link
+                    to="/verify-identity"
+                    className="mt-4 inline-flex rounded-full bg-oove-blue px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-105"
+                  >
+                    {identityQ.data?.verificationState === "approved"
+                      ? "View verification"
+                      : identityQ.data?.verificationState === "pending"
+                        ? "View submission"
+                        : "Verify identity"}
+                  </Link>
+                </div>
+
                 {(editingProfile || !hasRegistration) && (
                   <button
                     type="button"

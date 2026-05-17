@@ -12,9 +12,11 @@ import http from "node:http";
 import { Server as SocketIOServer } from "socket.io";
 import jwt from "jsonwebtoken";
 import { env } from "./env.js";
+import { ensureDbReady } from "./db/ensureDbReady.js";
 import { pgHost, pool } from "./db/index.js";
 import { createAdminDepositRoutes, createPublicDepositRoutes, } from "./routes/deposits.js";
 import { createAdminOpsRoutes } from "./routes/adminOps.js";
+import { createAdminIdentityRoutes } from "./routes/adminIdentity.js";
 import { authRouter } from "./routes/auth.js";
 import { liquidityRouter } from "./routes/liquidity.js";
 import { kycRouter } from "./routes/kyc.js";
@@ -27,6 +29,9 @@ import { identityRouter } from "./routes/identity.js";
 import { settingsRouter } from "./routes/settings.js";
 import { getUsdPrices } from "./lib/market.js";
 import { marketRouter } from "./routes/market.js";
+import { fixedSavingsRouter } from "./routes/fixedSavings.js";
+import { walletRouter } from "./routes/wallet.js";
+import { createAdminFixedSavingsRoutes } from "./routes/adminFixedSavings.js";
 /** Built Vite app (`npm run build -w web`), resolved from `server/dist/index.js`. */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = path.resolve(__dirname, "../../web/dist");
@@ -86,7 +91,7 @@ setInterval(() => {
 }, 25_000);
 app.use(helmet());
 app.use(cors({ origin: corsOrigins, credentials: true }));
-app.use(express.json({ limit: "512kb" }));
+app.use(express.json({ limit: "8mb" }));
 const depositLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 20,
@@ -105,9 +110,13 @@ app.use("/api/watchlist", watchlistRouter);
 app.use("/api/history", historyRouter);
 app.use("/api/identity", identityRouter);
 app.use("/api/settings", settingsRouter);
+app.use("/api/fixed-plans", fixedSavingsRouter);
+app.use("/api/wallet", walletRouter);
 app.use("/api/deposit", depositLimiter, createPublicDepositRoutes());
 app.use("/api/admin", createAdminDepositRoutes(io));
 app.use("/api/admin", createAdminOpsRoutes(io));
+app.use("/api/admin", createAdminIdentityRoutes());
+app.use("/api/admin", createAdminFixedSavingsRoutes());
 if (serveWeb) {
     app.use(express.static(WEB_DIST, { index: false }));
     app.use((req, res, next) => {
@@ -123,23 +132,40 @@ app.use((err, _req, res, _next) => {
     console.error("[Express error]", err);
     const clientSafe = /deposit not pending|missing unexpectedly/i.test(message) ||
         message === "Malformed transaction identifier for asset" ||
-        /Insufficient wallet balance|Insufficient balance|Amount exceeds|Recipient not found|Borrow position not active|Invalid borrow position|Watchlist not available|Username not allowed|Username is taken|Current password incorrect/i.test(message);
+        /KYC columns are missing|Identity verification table is missing|User profile columns are missing|npm run db:(sql|migrate)/i.test(message) ||
+        /Insufficient wallet balance|Insufficient balance|Insufficient CashBox|Amount exceeds|Amount must be|Duration must be|Plan not found|Identity verification must be approved|Recipient not found|Borrow position not active|Invalid borrow position|Watchlist not available|Username not allowed|Username is taken|Current password incorrect/i.test(message);
     if (clientSafe) {
         res.status(400).json({ error: message });
         return;
     }
-    res.status(500).json({ error: "Internal server error" });
+    if (/ECONNREFUSED|connection terminated|timeout expired|ENOTFOUND/i.test(message)) {
+        res.status(503).json({ error: "Database is not available. Try again in a moment." });
+        return;
+    }
+    res.status(500).json({
+        error: "Internal server error",
+        ...(process.env.NODE_ENV !== "production" ? { detail: message } : {}),
+    });
 });
 /** Bind on 0.0.0.0; Railway sets PORT — local dev falls back to 5000. */
 const listenPortRaw = process.env.PORT;
 const parsed = Number.parseInt(String(listenPortRaw ?? ""), 10);
 const listenPort = listenPortRaw !== undefined && listenPortRaw !== "" && Number.isFinite(parsed) && parsed > 0 ? parsed : 5000;
-server.listen(listenPort, "0.0.0.0", () => {
-    console.log(`[Startup] Listening on 0.0.0.0:${listenPort} (process.env.PORT=${listenPortRaw ?? "unset"} → using ${listenPort})`);
-    console.log(serveWeb
-        ? `API + Socket.IO + web (static ${WEB_DIST}) on 0.0.0.0:${listenPort}`
-        : `API + Socket.IO on 0.0.0.0:${listenPort} (no web dist at ${WEB_DIST} — run npm run build -w web)`);
-});
+async function startServer() {
+    await verifyPostgresWithRetry();
+    try {
+        await ensureDbReady();
+    }
+    catch (err) {
+        console.error("[Startup] Database migration check failed:", err);
+    }
+    server.listen(listenPort, "0.0.0.0", () => {
+        console.log(`[Startup] Listening on 0.0.0.0:${listenPort} (process.env.PORT=${listenPortRaw ?? "unset"} → using ${listenPort})`);
+        console.log(serveWeb
+            ? `API + Socket.IO + web (static ${WEB_DIST}) on 0.0.0.0:${listenPort}`
+            : `API + Socket.IO on 0.0.0.0:${listenPort} (no web dist at ${WEB_DIST} — run npm run build -w web)`);
+    });
+}
 function formatConnectError(err) {
     if (err instanceof AggregateError) {
         const parts = err.errors.map((e) => formatConnectError(e)).filter(Boolean);
@@ -174,4 +200,4 @@ async function verifyPostgresWithRetry() {
         }
     }
 }
-void verifyPostgresWithRetry();
+void startServer();

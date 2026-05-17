@@ -20,6 +20,9 @@ import { TransfersPage } from "@/pages/TransfersPage";
 import { WatchlistPage } from "@/pages/WatchlistPage";
 import { HistoryPage } from "@/pages/HistoryPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { FixedPlansPage } from "@/pages/FixedPlansPage";
+import { FixedPlanCreatePage } from "@/pages/FixedPlanCreatePage";
+import { AdminFixedSavingsPage } from "@/pages/AdminFixedSavingsPage";
 
 export default function App() {
   return (
@@ -37,6 +40,8 @@ export default function App() {
           <Route path="deposit" element={<DepositPage />} />
           <Route path="borrow" element={<BorrowPage />} />
           <Route path="portfolio" element={<PortfolioPage />} />
+          <Route path="fixed-plans" element={<FixedPlansPage />} />
+          <Route path="fixed-plans/create/:planId" element={<FixedPlanCreatePage />} />
           <Route path="transfers" element={<TransfersPage />} />
           <Route path="watchlist" element={<WatchlistPage />} />
           <Route path="history" element={<HistoryPage />} />
@@ -63,6 +68,14 @@ export default function App() {
             element={
               <AdminRoute>
                 <AdminIdentityVerificationsPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/fixed-savings"
+            element={
+              <AdminRoute>
+                <AdminFixedSavingsPage />
               </AdminRoute>
             }
           />

@@ -53,10 +53,21 @@ export type PendingIdentitySubmission = {
   idViewUrl: string | null;
 };
 
-function parseError(body: unknown, fallback: string): string {
-  if (body && typeof body === "object" && "error" in body) {
-    const err = (body as { error?: unknown }).error;
-    if (typeof err === "string" && err.length > 0) return err;
+function parseError(body: unknown, fallback: string, status?: number): string {
+  if (body && typeof body === "object") {
+    const record = body as { error?: unknown; detail?: unknown };
+    if (typeof record.error === "string" && record.error.length > 0) {
+      if (record.error === "Internal server error" && typeof record.detail === "string") {
+        return record.detail;
+      }
+      return record.error;
+    }
+  }
+  if (status === 503) {
+    return "Identity verification database is not set up on the API server. Run migrations on Render (see RENDER-NOW.md).";
+  }
+  if (status === 403) {
+    return "Insufficient permissions. Sign in with the admin email configured in ADMIN_PRIMARY_EMAIL.";
   }
   return fallback;
 }
@@ -66,7 +77,7 @@ export async function fetchIdentityStatus(token: string): Promise<IdentityStatus
     headers: { Authorization: `Bearer ${token}` },
   });
   const body = (await res.json().catch(() => ({}))) as { data?: IdentityStatusDto; error?: string };
-  if (!res.ok) throw new Error(parseError(body, res.statusText));
+  if (!res.ok) throw new Error(parseError(body, res.statusText, res.status));
   if (!body.data) throw new Error("Invalid identity status response");
   return body.data;
 }
@@ -87,7 +98,7 @@ export async function submitIdentityVerification(
     data?: { message?: string; verificationState?: VerificationState };
     error?: string;
   };
-  if (!res.ok) throw new Error(parseError(body, res.statusText));
+  if (!res.ok) throw new Error(parseError(body, res.statusText, res.status));
   return {
     message: body.data?.message ?? "Verification submitted.",
     verificationState: body.data?.verificationState ?? "pending",
@@ -99,7 +110,7 @@ export async function fetchPendingIdentityVerifications(token: string): Promise<
     headers: { Authorization: `Bearer ${token}` },
   });
   const body = (await res.json().catch(() => ({}))) as { data?: PendingIdentitySubmission[]; error?: string };
-  if (!res.ok) throw new Error(parseError(body, res.statusText));
+  if (!res.ok) throw new Error(parseError(body, res.statusText, res.status));
   return body.data ?? [];
 }
 

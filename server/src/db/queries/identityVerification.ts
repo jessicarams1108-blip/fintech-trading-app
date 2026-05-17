@@ -1,4 +1,6 @@
+import type { PoolClient } from "pg";
 import { pool } from "../index.js";
+import { rethrowPgSchemaError } from "../../lib/pgErrors.js";
 import { formatUserFullName } from "./users.js";
 
 export type IdentitySubmissionRow = {
@@ -33,25 +35,28 @@ export type IdentitySubmissionWithUser = IdentitySubmissionRow & {
   user_username: string | null;
 };
 
-export async function createIdentitySubmission(input: {
-  userId: string;
-  idDocType: string;
-  idStorageKey: string;
-  idContentType: string;
-  idFileName: string;
-  idDocumentBase64: string | null;
-  ssnLast4: string;
-  phoneCountryCode: string;
-  phoneNumber: string;
-  email: string;
-  street: string;
-  city: string;
-  stateProvince: string;
-  postalCode: string;
-  country: string;
-  vendorFields: Record<string, unknown>;
-}): Promise<IdentitySubmissionRow> {
-  const { rows } = await pool.query<IdentitySubmissionRow>(
+async function insertIdentitySubmission(
+  client: PoolClient,
+  input: {
+    userId: string;
+    idDocType: string;
+    idStorageKey: string;
+    idContentType: string;
+    idFileName: string;
+    idDocumentBase64: string | null;
+    ssnLast4: string;
+    phoneCountryCode: string;
+    phoneNumber: string;
+    email: string;
+    street: string;
+    city: string;
+    stateProvince: string;
+    postalCode: string;
+    country: string;
+    vendorFields: Record<string, unknown>;
+  },
+): Promise<IdentitySubmissionRow> {
+  const { rows } = await client.query<IdentitySubmissionRow>(
     `INSERT INTO identity_verification_submissions (
        user_id, status, id_doc_type, id_storage_key, id_content_type, id_file_name,
        id_document_base64, ssn_last4, phone_country_code, phone_number, email,
@@ -84,30 +89,103 @@ export async function createIdentitySubmission(input: {
   return rows[0]!;
 }
 
-export async function getLatestSubmissionForUser(userId: string): Promise<IdentitySubmissionRow | null> {
-  const { rows } = await pool.query<IdentitySubmissionRow>(
-    `SELECT * FROM identity_verification_submissions
-     WHERE user_id = $1::uuid
-     ORDER BY created_at DESC
-     LIMIT 1`,
-    [userId],
-  );
-  return rows[0] ?? null;
+export async function createIdentitySubmission(input: {
+  userId: string;
+  idDocType: string;
+  idStorageKey: string;
+  idContentType: string;
+  idFileName: string;
+  idDocumentBase64: string | null;
+  ssnLast4: string;
+  phoneCountryCode: string;
+  phoneNumber: string;
+  email: string;
+  street: string;
+  city: string;
+  stateProvince: string;
+  postalCode: string;
+  country: string;
+  vendorFields: Record<string, unknown>;
+}): Promise<IdentitySubmissionRow> {
+  const client = await pool.connect();
+  try {
+    return await insertIdentitySubmission(client, input);
+  } catch (err) {
+    rethrowPgSchemaError(err);
+  } finally {
+    client.release();
+  }
 }
 
-export async function listPendingIdentitySubmissions(): Promise<IdentitySubmissionWithUser[]> {
-  const { rows } = await pool.query<IdentitySubmissionWithUser>(
-    `SELECT s.*,
-            u.email AS user_email,
-            u.first_name AS user_first_name,
-            u.last_name AS user_last_name,
-            u.username AS user_username
-     FROM identity_verification_submissions s
-     JOIN users u ON u.id = s.user_id
-     WHERE s.status = 'pending'
-     ORDER BY s.created_at ASC`,
-  );
-  return rows;
+/** Saves submission and marks user KYC pending in one transaction. */
+export async function createIdentitySubmissionAndMarkPending(
+  input: Parameters<typeof createIdentitySubmission>[0],
+): Promise<IdentitySubmissionRow> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const submission = await insertIdentitySubmission(client, input);
+    await client.query(
+      `UPDATE users SET kyc_status = 'pending', kyc_tier = 0 WHERE id = $1::uuid`,
+      [input.userId],
+    );
+    await client.query("COMMIT");
+    return submission;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    rethrowPgSchemaError(err);
+  } finally {
+    client.release();
+  }
+}
+
+export async function getLatestSubmissionForUser(userId: string): Promise<IdentitySubmissionRow | null> {
+  try {
+    const { rows } = await pool.query<IdentitySubmissionRow>(
+      `SELECT * FROM identity_verification_submissions
+       WHERE user_id = $1::uuid
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userId],
+    );
+    return rows[0] ?? null;
+  } catch (err) {
+    rethrowPgSchemaError(err);
+  }
+}
+
+export type IdentitySubmissionListRow = Omit<IdentitySubmissionRow, "id_document_base64"> & {
+  has_inline_document: boolean;
+};
+
+export type IdentitySubmissionListWithUser = IdentitySubmissionListRow & {
+  user_email: string;
+  user_first_name: string | null;
+  user_last_name: string | null;
+  user_username: string | null;
+};
+
+export async function listPendingIdentitySubmissions(): Promise<IdentitySubmissionListWithUser[]> {
+  try {
+    const { rows } = await pool.query<IdentitySubmissionListWithUser>(
+      `SELECT s.id, s.user_id, s.status, s.id_doc_type, s.id_storage_key, s.id_content_type,
+              s.id_file_name, (s.id_document_base64 IS NOT NULL) AS has_inline_document,
+              s.ssn_last4, s.phone_country_code, s.phone_number, s.email,
+              s.street, s.city, s.state_province, s.postal_code, s.country, s.vendor_fields,
+              s.rejection_reason, s.reviewed_at, s.reviewed_by, s.created_at,
+              u.email AS user_email,
+              u.first_name AS user_first_name,
+              u.last_name AS user_last_name,
+              u.username AS user_username
+       FROM identity_verification_submissions s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.status = 'pending'
+       ORDER BY s.created_at ASC`,
+    );
+    return rows;
+  } catch (err) {
+    rethrowPgSchemaError(err);
+  }
 }
 
 export async function getIdentitySubmissionById(id: string): Promise<IdentitySubmissionWithUser | null> {
@@ -158,7 +236,7 @@ export async function approveIdentitySubmission(input: {
     return getIdentitySubmissionById(sub.id);
   } catch (e) {
     await client.query("ROLLBACK");
-    throw e;
+    rethrowPgSchemaError(e);
   } finally {
     client.release();
   }
@@ -195,13 +273,15 @@ export async function rejectIdentitySubmission(input: {
     return getIdentitySubmissionById(sub.id);
   } catch (e) {
     await client.query("ROLLBACK");
-    throw e;
+    rethrowPgSchemaError(e);
   } finally {
     client.release();
   }
 }
 
-export function submissionUserFullName(row: IdentitySubmissionWithUser): string {
+export function submissionUserFullName(
+  row: Pick<IdentitySubmissionWithUser, "user_first_name" | "user_last_name">,
+): string {
   return formatUserFullName(row.user_first_name, row.user_last_name);
 }
 

@@ -7,6 +7,8 @@
     "db:create": "node ./scripts/ensure-database.mjs",
     "db:schema": "node ./scripts/apply-schema.mjs",
     "db:sql": "node ./scripts/run-sql.mjs",
+    "db:migrate": "node ./scripts/apply-migrations.mjs",
+    "db:migrate:identity": "node ./scripts/run-sql.mjs ../db/migrations/002_auth_registration.sql && node ./scripts/run-sql.mjs ../db/migrations/003_oove_liquidity_kyc.sql && node ./scripts/run-sql.mjs ../db/migrations/007_identity_verification.sql",
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js"

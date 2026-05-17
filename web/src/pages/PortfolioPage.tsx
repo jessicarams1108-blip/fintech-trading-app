@@ -7,6 +7,8 @@ import { MaskedValue } from "@/state/BalanceVisibilityContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
 import { MarketOverviewPanel } from "@/components/MarketOverviewPanel";
 import { apiFetch } from "@/lib/apiBase";
+import { fetchFixedSavingsSummary } from "@/lib/fixedSavingsApi";
+import { formatUsd } from "@/lib/fixedSavingsUtils";
 
 type Summary = { totalValueUsd: number; change24hPct: number; allocation: { symbol: string; valueUsd: number }[] };
 type Holding = {
@@ -56,6 +58,12 @@ export function PortfolioPage() {
     queryFn: () => fetchJson<{ data: Summary }>("/api/portfolio/summary", token!).then((r) => r.data),
   });
 
+  const fixedQ = useQuery({
+    queryKey: ["fixed-savings-summary", token],
+    enabled: !!token,
+    queryFn: () => fetchFixedSavingsSummary(token!),
+  });
+
   const holdingsQ = useQuery({
     queryKey: ["portfolio", "holdings", token],
     enabled: !!token,
@@ -63,6 +71,7 @@ export function PortfolioPage() {
   });
 
   const total = summaryQ.data?.totalValueUsd ?? 0;
+  const fixedTotal = fixedQ.data?.activeTotalUsd ?? 0;
   const chg = summaryQ.data?.change24hPct ?? 0;
   const alloc = summaryQ.data?.allocation ?? [];
 
@@ -94,12 +103,12 @@ export function PortfolioPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-start gap-2">
             <BalanceVisibilityEyeToggle className="mt-0.5" />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Portfolio value</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Total value</p>
               <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
                 <MaskedValue>{formatPortfolioTotalUsd(total)}</MaskedValue>
               </p>
@@ -117,6 +126,27 @@ export function PortfolioPage() {
             </div>
           </div>
         </div>
+        <Link
+          to="/fixed-plans"
+          className="rounded-2xl border border-violet-200 bg-violet-50/40 p-6 shadow-sm transition hover:border-violet-300"
+        >
+          <div className="flex items-start gap-2">
+            <BalanceVisibilityEyeToggle className="mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-violet-700">Fixed savings</p>
+              <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
+                <MaskedValue>{formatUsd(fixedTotal)}</MaskedValue>
+              </p>
+              <p className="mt-2 text-sm font-medium text-violet-600">View plans →</p>
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <MarketOverviewPanel chartHeight={300} />
+        </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm font-semibold text-slate-900">Allocation</p>
           <ul className="mt-3 space-y-2 text-sm">
@@ -132,8 +162,6 @@ export function PortfolioPage() {
           </ul>
         </div>
       </div>
-
-      <MarketOverviewPanel chartHeight={300} />
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-6 py-4">

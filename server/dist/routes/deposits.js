@@ -75,12 +75,12 @@ function generatedPendingTxHash(asset) {
 const NETWORK_LABELS = {
     BTC: "Bitcoin",
     ETH: "Ethereum",
-    USDT: "Ethereum (ERC-20 demo)",
+    USDT: "Ethereum (ERC-20)",
 };
 const depositNotice = {
     BTC: "Only send BTC to this address. Do not send other assets.",
-    ETH: "Only send ETH on the configured Ethereum network demo.",
-    USDT: "Only send supported USDT on the configured Ethereum network demo.",
+    ETH: "Only send ETH on the configured Ethereum network.",
+    USDT: "Only send supported USDT on the configured Ethereum network.",
 };
 export function createPublicDepositRoutes() {
     const router = Router();

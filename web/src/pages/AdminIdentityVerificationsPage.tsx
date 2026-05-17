@@ -1,3 +1,4 @@
+import { API_ORIGIN } from "@/lib/apiBase";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/state/AuthContext";
 import {
@@ -98,7 +99,15 @@ export function AdminIdentityVerificationsPage() {
       </div>
 
       {loadError ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{loadError}</p>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p>{loadError}</p>
+          <p className="mt-2 text-xs text-red-700/90">
+            API: {API_ORIGIN || "localhost (Vite proxy → port 4000)"}. If this is Render, redeploy the
+            backend and open <code className="rounded bg-red-100 px-1">/health</code> —{" "}
+            <code className="rounded bg-red-100 px-1">identityVerification.ready</code> must be{" "}
+            <code className="rounded bg-red-100 px-1">true</code>.
+          </p>
+        </div>
       ) : null}
 
       {rows.length === 0 && !loadError ? (
