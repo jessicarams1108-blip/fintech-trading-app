@@ -1,6 +1,6 @@
 /**
- * Ensures identity/KYC tables exist (runs migrations on existing DBs).
- * Used before `node dist/index.js` on Render.
+ * Ensures schema + incremental migrations are applied before `node dist/index.js` (Render/Railway).
+ * Migrations are idempotent (IF NOT EXISTS / ON CONFLICT) and safe to re-run each deploy.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -45,25 +45,6 @@ const client = new pg.Client({
 const migrationsDir = path.resolve(__dirname, "../../db/migrations");
 const schemaPath = path.resolve(__dirname, "../../db/schema.sql");
 
-async function detectNeeds() {
-  const { rows } = await client.query(
-    `SELECT
-       EXISTS (
-         SELECT 1 FROM information_schema.tables
-         WHERE table_schema = 'public' AND table_name = 'users'
-       ) AS has_users,
-       to_regclass('public.identity_verification_submissions') IS NOT NULL AS identity_tbl,
-       EXISTS (
-         SELECT 1 FROM information_schema.columns
-         WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'kyc_status'
-       ) AS kyc_cols`,
-  );
-  const row = rows[0];
-  if (!row.has_users) return "schema";
-  if (!row.identity_tbl || !row.kyc_cols) return "migrations";
-  return "none";
-}
-
 async function applyFile(abs, label) {
   await client.query(fs.readFileSync(abs, "utf8"));
   console.log("[db:ready] Applied", label);
@@ -71,14 +52,16 @@ async function applyFile(abs, label) {
 
 await client.connect();
 try {
-  const needs = await detectNeeds();
-  if (needs === "none") {
-    console.log("[db:ready] OK");
-    process.exit(0);
-  }
-  if (needs === "schema") {
+  const { rows } = await client.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'users'
+     ) AS has_users`,
+  );
+  if (!rows[0]?.has_users) {
     await applyFile(schemaPath, "db/schema.sql");
   }
+
   const files = fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))
@@ -86,12 +69,8 @@ try {
   for (const file of files) {
     await applyFile(path.join(migrationsDir, file), file);
   }
-  const after = await detectNeeds();
-  if (after !== "none") {
-    console.error("[db:ready] Still incomplete after migrations");
-    process.exit(1);
-  }
-  console.log("[db:ready] Migrations complete");
+
+  console.log("[db:ready] Database ready");
 } catch (e) {
   console.error("[db:ready] Failed:", e instanceof Error ? e.message : e);
   process.exit(1);
