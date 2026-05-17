@@ -1,4 +1,4 @@
-import type { DisplayLanguage } from "@/lib/preferencesTypes";
+import { normalizeLanguage } from "@/lib/languageCatalog";
 
 const en = {
   "nav.home": "Home",
@@ -239,14 +239,25 @@ const fr: Record<keyof typeof en, string> = {
 
 const catalogs = { en, es, fr } as const;
 
+type CatalogLanguage = keyof typeof catalogs;
+
 export type TranslationKey = keyof typeof en;
+
+function resolveCatalogLanguage(language: string): CatalogLanguage {
+  const base = normalizeLanguage(language);
+  if (base === "es" || base.startsWith("es")) return "es";
+  if (base === "fr" || base.startsWith("fr")) return "fr";
+  if (base === "en" || base.startsWith("en")) return "en";
+  return "en";
+}
 
 export function translate(
   key: TranslationKey,
-  language: DisplayLanguage,
+  language: string,
   params?: Record<string, string | number>,
 ): string {
-  const table = catalogs[language] ?? catalogs.en;
+  const catalog = resolveCatalogLanguage(language);
+  const table = catalogs[catalog];
   let text: string = table[key] ?? catalogs.en[key] ?? key;
   if (params) {
     for (const [k, v] of Object.entries(params)) {

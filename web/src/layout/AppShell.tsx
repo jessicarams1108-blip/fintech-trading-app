@@ -3,7 +3,8 @@ import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/state/AuthContext";
 import { useTheme } from "@/state/ThemeContext";
-import { usePreferences, type DisplayCurrency, type DisplayLanguage } from "@/state/PreferencesContext";
+import { CurrencyPreferenceSelect, LanguagePreferenceSelect } from "@/components/PreferenceSelects";
+import { usePreferences } from "@/state/PreferencesContext";
 import type { TranslationKey } from "@/lib/i18n";
 import { DepositSocketBridge } from "@/components/DepositSocketBridge";
 
@@ -241,31 +242,23 @@ export function AppShell() {
                       <label className={menuLabel} htmlFor="pref-currency">
                         {t("shell.currency")}
                       </label>
-                      <select
+                      <CurrencyPreferenceSelect
                         id="pref-currency"
                         className={menuSelect}
                         value={currency}
-                        onChange={(e) => setCurrency(e.target.value as DisplayCurrency)}
-                      >
-                        <option value="USD">USD — US dollar</option>
-                        <option value="EUR">EUR — Euro</option>
-                        <option value="GBP">GBP — British pound</option>
-                      </select>
+                        onChange={setCurrency}
+                      />
                     </div>
                     <div>
                       <label className={menuLabel} htmlFor="pref-language">
                         {t("shell.language")}
                       </label>
-                      <select
+                      <LanguagePreferenceSelect
                         id="pref-language"
                         className={menuSelect}
                         value={language}
-                        onChange={(e) => setLanguage(e.target.value as DisplayLanguage)}
-                      >
-                        <option value="en">English</option>
-                        <option value="es">Español</option>
-                        <option value="fr">Français</option>
-                      </select>
+                        onChange={setLanguage}
+                      />
                     </div>
                   </div>
 

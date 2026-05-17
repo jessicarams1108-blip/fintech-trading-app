@@ -1,26 +1,9 @@
-import type { DisplayCurrency, DisplayLanguage } from "@/lib/preferencesTypes";
-
-/** Display-only FX from USD (backend amounts stay USD). */
-export const USD_TO_DISPLAY: Record<DisplayCurrency, number> = {
-  USD: 1,
-  EUR: 0.92,
-  GBP: 0.79,
-};
-
-export function localeForLanguage(language: DisplayLanguage): string {
-  switch (language) {
-    case "es":
-      return "es-ES";
-    case "fr":
-      return "fr-FR";
-    default:
-      return "en-US";
-  }
-}
+import { normalizeCurrency, usdToCurrencyRate, type DisplayCurrency } from "@/lib/currencyCatalog";
+import { localeForLanguage, type DisplayLanguage } from "@/lib/languageCatalog";
 
 export function convertUsdForDisplay(amountUsd: number, currency: DisplayCurrency): number {
   if (!Number.isFinite(amountUsd)) return 0;
-  return amountUsd * USD_TO_DISPLAY[currency];
+  return amountUsd * usdToCurrencyRate(currency);
 }
 
 export function formatDisplayMoney(
@@ -29,43 +12,54 @@ export function formatDisplayMoney(
   language: DisplayLanguage,
   options?: { minimumFractionDigits?: number; maximumFractionDigits?: number },
 ): string {
+  const code = normalizeCurrency(currency);
+  const locale = localeForLanguage(language);
   if (!Number.isFinite(amountUsd)) {
-    return new Intl.NumberFormat(localeForLanguage(language), {
-      style: "currency",
-      currency,
-    }).format(0);
+    try {
+      return new Intl.NumberFormat(locale, { style: "currency", currency: code }).format(0);
+    } catch {
+      return `${code} 0`;
+    }
   }
-  const converted = convertUsdForDisplay(amountUsd, currency);
-  return new Intl.NumberFormat(localeForLanguage(language), {
-    style: "currency",
-    currency,
-    minimumFractionDigits: options?.minimumFractionDigits ?? 2,
-    maximumFractionDigits: options?.maximumFractionDigits ?? 2,
-  }).format(converted);
+  const converted = convertUsdForDisplay(amountUsd, code);
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: options?.minimumFractionDigits ?? 2,
+      maximumFractionDigits: options?.maximumFractionDigits ?? 2,
+    }).format(converted);
+  } catch {
+    return `${code} ${converted.toLocaleString(locale)}`;
+  }
 }
 
-/** Headline totals: fewer decimals when large whole amounts. */
 export function formatDisplayPortfolioTotal(
   amountUsd: number,
   currency: DisplayCurrency,
   language: DisplayLanguage,
 ): string {
   if (!Number.isFinite(amountUsd)) return formatDisplayMoney(0, currency, language);
-  const converted = convertUsdForDisplay(amountUsd, currency);
+  const code = normalizeCurrency(currency);
+  const locale = localeForLanguage(language);
+  const converted = convertUsdForDisplay(amountUsd, code);
   const abs = Math.abs(converted);
-  if (abs >= 1) {
-    return new Intl.NumberFormat(localeForLanguage(language), {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(converted);
+  try {
+    if (abs >= 1) {
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: code,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(converted);
+    }
+    if (abs < 1e-12) return formatDisplayMoney(0, currency, language, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    return formatDisplayMoney(amountUsd, currency, language, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+  } catch {
+    return formatDisplayMoney(amountUsd, currency, language);
   }
-  if (abs < 1e-12) return formatDisplayMoney(0, currency, language, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  return formatDisplayMoney(amountUsd, currency, language, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
 }
 
-/** Crypto / asset USD spot shown in user's display currency. */
 export function formatDisplayPrice(
   priceUsd: number,
   currency: DisplayCurrency,
@@ -74,12 +68,10 @@ export function formatDisplayPrice(
   if (!Number.isFinite(priceUsd)) return "—";
   const converted = convertUsdForDisplay(priceUsd, currency);
   const maxFrac = converted < 1 ? 6 : converted < 1000 ? 4 : 2;
-  return new Intl.NumberFormat(localeForLanguage(language), {
-    style: "currency",
-    currency,
+  return formatDisplayMoney(priceUsd, currency, language, {
     minimumFractionDigits: 2,
     maximumFractionDigits: maxFrac,
-  }).format(converted);
+  });
 }
 
 export function formatDisplayMoneyCompact(
@@ -88,12 +80,18 @@ export function formatDisplayMoneyCompact(
   language: DisplayLanguage,
 ): string {
   if (!Number.isFinite(amountUsd) || amountUsd <= 0) return "—";
-  const n = convertUsdForDisplay(amountUsd, currency);
+  const code = normalizeCurrency(currency);
+  const n = convertUsdForDisplay(amountUsd, code);
   const locale = localeForLanguage(language);
-  const sym =
-    new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: "narrowSymbol" })
-      .formatToParts(0)
-      .find((p) => p.type === "currency")?.value ?? currency;
+  let sym = code;
+  try {
+    sym =
+      new Intl.NumberFormat(locale, { style: "currency", currency: code, currencyDisplay: "narrowSymbol" })
+        .formatToParts(0)
+        .find((p) => p.type === "currency")?.value ?? code;
+  } catch {
+    /* keep code */
+  }
   if (n >= 1e12) return `${sym}${(n / 1e12).toFixed(2)}T`;
   if (n >= 1e9) return `${sym}${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `${sym}${(n / 1e6).toFixed(2)}M`;
@@ -115,3 +113,6 @@ export function formatDisplayDate(
     ...options,
   });
 }
+
+export { localeForLanguage, normalizeLanguage } from "@/lib/languageCatalog";
+export { normalizeCurrency } from "@/lib/currencyCatalog";

@@ -14,7 +14,8 @@ export function addDaysToDate(start: Date, days: number): Date {
 }
 
 import { formatDisplayDate, formatDisplayMoney, localeForLanguage } from "@/lib/displayFx";
-import type { DisplayCurrency, DisplayLanguage } from "@/lib/preferencesTypes";
+import type { DisplayCurrency } from "@/lib/currencyCatalog";
+import type { DisplayLanguage } from "@/lib/languageCatalog";
 
 export function formatDateRange(start: Date, days: number, language: DisplayLanguage = "en"): string {
   const end = addDaysToDate(start, days);

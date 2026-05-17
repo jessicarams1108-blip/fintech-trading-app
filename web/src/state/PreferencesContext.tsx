@@ -7,18 +7,18 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { normalizeCurrency, type DisplayCurrency } from "@/lib/currencyCatalog";
 import {
   formatDisplayDate,
   formatDisplayMoney,
   formatDisplayMoneyCompact,
   formatDisplayPortfolioTotal,
   formatDisplayPrice,
-  localeForLanguage,
 } from "@/lib/displayFx";
+import { localeForLanguage, normalizeLanguage, type DisplayLanguage } from "@/lib/languageCatalog";
 import { translate, type TranslationKey } from "@/lib/i18n";
-import type { DisplayCurrency, DisplayLanguage } from "@/lib/preferencesTypes";
 
-export type { DisplayCurrency, DisplayLanguage } from "@/lib/preferencesTypes";
+export type { DisplayCurrency, DisplayLanguage };
 
 type PreferencesContextValue = {
   currency: DisplayCurrency;
@@ -26,7 +26,6 @@ type PreferencesContextValue = {
   language: DisplayLanguage;
   setLanguage: (l: DisplayLanguage) => void;
   locale: string;
-  /** Format a USD ledger amount in the user's display currency. */
   formatMoney: (amountUsd: number, options?: { minimumFractionDigits?: number; maximumFractionDigits?: number }) => string;
   formatPortfolioTotal: (amountUsd: number) => string;
   formatPrice: (priceUsd: number) => string;
@@ -42,16 +41,12 @@ const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 
 function readCurrency(): DisplayCurrency {
   if (typeof window === "undefined") return "USD";
-  const v = localStorage.getItem(STORAGE_CURRENCY);
-  if (v === "USD" || v === "EUR" || v === "GBP") return v;
-  return "USD";
+  return normalizeCurrency(localStorage.getItem(STORAGE_CURRENCY) ?? "USD");
 }
 
 function readLanguage(): DisplayLanguage {
   if (typeof window === "undefined") return "en";
-  const v = localStorage.getItem(STORAGE_LANGUAGE);
-  if (v === "en" || v === "es" || v === "fr") return v;
-  return "en";
+  return normalizeLanguage(localStorage.getItem(STORAGE_LANGUAGE) ?? "en");
 }
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
@@ -61,14 +56,16 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const locale = localeForLanguage(language);
 
   const setCurrency = useCallback((c: DisplayCurrency) => {
-    setCurrencyState(c);
-    localStorage.setItem(STORAGE_CURRENCY, c);
+    const next = normalizeCurrency(c);
+    setCurrencyState(next);
+    localStorage.setItem(STORAGE_CURRENCY, next);
   }, []);
 
   const setLanguage = useCallback((l: DisplayLanguage) => {
-    setLanguageState(l);
-    localStorage.setItem(STORAGE_LANGUAGE, l);
-    document.documentElement.lang = l;
+    const next = normalizeLanguage(l);
+    setLanguageState(next);
+    localStorage.setItem(STORAGE_LANGUAGE, next);
+    document.documentElement.lang = next;
   }, []);
 
   useEffect(() => {

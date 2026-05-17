@@ -1,4 +1,5 @@
-import type { DisplayCurrency, DisplayLanguage } from "@/lib/preferencesTypes";
+import type { DisplayCurrency } from "@/lib/currencyCatalog";
+import type { DisplayLanguage } from "@/lib/languageCatalog";
 import { formatDisplayPortfolioTotal } from "@/lib/displayFx";
 
 /**

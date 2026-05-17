@@ -7,7 +7,8 @@ import { fetchIdentityStatus, type VerificationState } from "@/lib/identityApi";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
 import { useToast } from "@/state/ToastContext";
 import { useTheme } from "@/state/ThemeContext";
-import { usePreferences, type DisplayCurrency, type DisplayLanguage } from "@/state/PreferencesContext";
+import { CurrencyPreferenceSelect, LanguagePreferenceSelect } from "@/components/PreferenceSelects";
+import { usePreferences } from "@/state/PreferencesContext";
 import { apiFetch } from "@/lib/apiBase";
 import { changePassword, fetchProfile, patchProfile } from "@/lib/settingsApi";
 import { resolveProfileFields } from "@/lib/profileDisplay";
@@ -456,37 +457,29 @@ export function SettingsPage() {
               <label className={labelClass()} htmlFor="settings-currency">
                 Currency
               </label>
-              <select
+              <CurrencyPreferenceSelect
                 id="settings-currency"
                 className={clsx(fieldClass(), "mt-1.5")}
                 value={currency}
-                onChange={(e) => {
-                  setCurrency(e.target.value as DisplayCurrency);
-                  showToast(t("settings.currencySet", { currency: e.target.value }), "success");
+                onChange={(code) => {
+                  setCurrency(code);
+                  showToast(t("settings.currencySet", { currency: code }), "success");
                 }}
-              >
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="GBP">GBP</option>
-              </select>
+              />
             </div>
             <div>
               <label className={labelClass()} htmlFor="settings-language">
                 Language
               </label>
-              <select
+              <LanguagePreferenceSelect
                 id="settings-language"
                 className={clsx(fieldClass(), "mt-1.5")}
                 value={language}
-                onChange={(e) => {
-                  setLanguage(e.target.value as DisplayLanguage);
+                onChange={(code) => {
+                  setLanguage(code);
                   showToast(t("settings.languageSet"), "success");
                 }}
-              >
-                <option value="en">English</option>
-                <option value="es">Español</option>
-                <option value="fr">Français</option>
-              </select>
+              />
             </div>
           </SettingsCard>
 
