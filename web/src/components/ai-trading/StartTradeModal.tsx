@@ -66,7 +66,7 @@ export function StartTradeModal({
 
   return (
     <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/70 p-4 sm:items-center">
-      <div className="w-full max-w-md rounded-2xl bg-[#1A1A1A] p-4 text-white shadow-2xl">
+      <div className="w-full max-w-md rounded-2xl bg-[#1C1C1E] p-4 text-white shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Start AI trade</h2>
           <button type="button" onClick={onClose} className="rounded-lg p-1 text-[#9CA3AF] hover:bg-white/10" aria-label="Close">
@@ -85,7 +85,7 @@ export function StartTradeModal({
                   onClick={() => setAssetClass(c.id)}
                   className={clsx(
                     "flex-1 rounded-xl py-2 text-sm font-semibold",
-                    assetClass === c.id ? "bg-white text-black" : "bg-[#0D0D0D] text-[#9CA3AF]",
+                    assetClass === c.id ? "bg-oove-blue text-white" : "bg-black text-[#8E8E93]",
                   )}
                 >
                   {c.label}
@@ -99,7 +99,7 @@ export function StartTradeModal({
             <input
               value={asset}
               onChange={(e) => setAsset(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#0D0D0D] px-3 py-2.5 text-sm outline-none focus:border-white/30"
+              className="w-full rounded-xl border border-white/10 bg-black px-3 py-2.5 text-sm outline-none focus:border-oove-blue"
               placeholder="e.g. BTC, AAPL, EUR/USD"
             />
           </div>
@@ -115,7 +115,7 @@ export function StartTradeModal({
               step="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#0D0D0D] px-3 py-2.5 text-sm outline-none focus:border-white/30"
+              className="w-full rounded-xl border border-white/10 bg-black px-3 py-2.5 text-sm outline-none focus:border-oove-blue"
               placeholder={`Min $${minAmount}`}
             />
           </div>
@@ -125,7 +125,7 @@ export function StartTradeModal({
           <button
             type="submit"
             disabled={loading || !canTrade}
-            className="w-full rounded-xl bg-white py-3 text-sm font-semibold text-black disabled:opacity-40"
+            className="w-full rounded-xl bg-oove-blue py-3 text-sm font-semibold text-white disabled:opacity-40"
           >
             {loading ? "AI Agent is analyzing market…" : "Start AI trading"}
           </button>
