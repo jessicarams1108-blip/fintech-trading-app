@@ -243,6 +243,69 @@ export async function listUnifiedHistory(
     /* transfer_requests missing */
   }
 
+  try {
+    const { rows: fsRows } = await pool.query<{
+      id: string;
+      created_at: Date;
+      amount: string;
+      status: string;
+      days: number;
+      plan_name: string;
+      goal_name: string | null;
+    }>(
+      `SELECT s.id::text, s.created_at, s.amount::text, s.status, s.days, p.name AS plan_name, s.goal_name
+       FROM fixed_savings_subscriptions s
+       JOIN fixed_savings_plans p ON p.id = s.plan_id
+       WHERE s.user_id = $1::uuid
+       ORDER BY s.created_at DESC
+       LIMIT 100`,
+      [userId],
+    );
+    for (const r of fsRows) {
+      entries.push({
+        id: `fs:${r.id}`,
+        at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+        type: "fixed_savings",
+        asset: "USD",
+        amount: r.amount,
+        direction: "lock",
+        status: r.status,
+        detail: r.goal_name ? `${r.plan_name} · ${r.goal_name}` : r.plan_name,
+      });
+    }
+  } catch {
+    /* fixed savings tables missing */
+  }
+
+  try {
+    const { rows: idRows } = await pool.query<{
+      id: string;
+      created_at: Date;
+      status: string;
+    }>(
+      `SELECT id::text, created_at, status::text
+       FROM identity_verification_submissions
+       WHERE user_id = $1::uuid
+       ORDER BY created_at DESC
+       LIMIT 50`,
+      [userId],
+    );
+    for (const r of idRows) {
+      entries.push({
+        id: `idv:${r.id}`,
+        at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+        type: "identity",
+        asset: null,
+        amount: null,
+        direction: null,
+        status: r.status,
+        detail: "Identity verification",
+      });
+    }
+  } catch {
+    /* identity table missing */
+  }
+
   entries.sort((a, b) => +new Date(b.at) - +new Date(a.at));
 
   let filtered = entries;

@@ -7,6 +7,7 @@ import { CurrencyPreferenceSelect, LanguagePreferenceSelect } from "@/components
 import { usePreferences } from "@/state/PreferencesContext";
 import type { TranslationKey } from "@/lib/i18n";
 import { DepositSocketBridge } from "@/components/DepositSocketBridge";
+import { NotificationBell } from "@/components/NotificationBell";
 
 type NavDescriptor = {
   to: string;
@@ -20,6 +21,7 @@ const sidebarMainNav: NavDescriptor[] = [
   { to: "/borrow", labelKey: "nav.borrow" },
   { to: "/portfolio", labelKey: "nav.portfolio" },
   { to: "/fixed-plans", labelKey: "nav.fixedSavings" },
+  { to: "/ai-trading", labelKey: "nav.aiTrading" },
   { to: "/watchlist", labelKey: "nav.watchlist" },
   { to: "/history", labelKey: "nav.history" },
 ];
@@ -29,6 +31,7 @@ const sidebarAdminNav: NavDescriptor[] = [
   { to: "/admin/deposits", labelKey: "nav.adminDeposits", adminOnly: true },
   { to: "/admin/identity", labelKey: "nav.adminIdentity", adminOnly: true },
   { to: "/admin/fixed-savings", labelKey: "nav.adminFixedSavings", adminOnly: true },
+  { to: "/admin/ai-trading", labelKey: "nav.adminAiTrading", adminOnly: true },
 ];
 
 function HamburgerIcon({ open }: { open: boolean }) {
@@ -199,13 +202,7 @@ export function AppShell() {
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-2 sm:flex-none sm:flex-initial">
-            <button
-              type="button"
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-              aria-label="Notifications"
-            >
-              🔔
-            </button>
+            <NotificationBell />
 
             <div className="relative shrink-0" ref={profileRef}>
               <button

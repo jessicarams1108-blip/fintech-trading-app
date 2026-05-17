@@ -106,12 +106,26 @@ export function formatDisplayDate(
 ): string {
   const d = typeof date === "string" ? new Date(date) : date;
   if (Number.isNaN(d.getTime())) return String(date);
-  return d.toLocaleDateString(localeForLanguage(language), {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    ...options,
-  });
+  const locale = localeForLanguage(language);
+  const wantsTime = options?.timeStyle != null || options?.hour != null;
+  const usesStyle = options?.dateStyle != null || options?.timeStyle != null;
+  try {
+    if (wantsTime || usesStyle) {
+      return d.toLocaleString(locale, options);
+    }
+    return d.toLocaleDateString(locale, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      ...options,
+    });
+  } catch {
+    try {
+      return d.toLocaleString(locale);
+    } catch {
+      return String(date);
+    }
+  }
 }
 
 export { localeForLanguage, normalizeLanguage } from "@/lib/languageCatalog";

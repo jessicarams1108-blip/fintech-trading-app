@@ -21,9 +21,11 @@ export function DepositSocketBridge() {
       void qc.invalidateQueries({ queryKey: ["portfolio"] });
       void qc.invalidateQueries({ queryKey: ["liquidity"] });
       void qc.invalidateQueries({ queryKey: ["history"] });
+      void qc.invalidateQueries({ queryKey: ["notifications"] });
       void qc.invalidateQueries({ queryKey: ["borrow"] });
       void qc.invalidateQueries({ queryKey: ["transfers"] });
       window.dispatchEvent(new CustomEvent("oove:deposits-activity-refresh"));
+      window.dispatchEvent(new CustomEvent("oove:notifications-refresh"));
     },
     [qc, showToast],
   );

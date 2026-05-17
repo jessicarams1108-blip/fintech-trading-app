@@ -30,6 +30,7 @@ import { portfolioRouter } from "./routes/portfolio.js";
 import { transfersRouter } from "./routes/transfers.js";
 import { watchlistRouter } from "./routes/watchlist.js";
 import { historyRouter } from "./routes/history.js";
+import { notificationsRouter } from "./routes/notifications.js";
 import { identityRouter } from "./routes/identity.js";
 import { settingsRouter } from "./routes/settings.js";
 import { getUsdPrices } from "./lib/market.js";
@@ -37,6 +38,8 @@ import { marketRouter } from "./routes/market.js";
 import { fixedSavingsRouter } from "./routes/fixedSavings.js";
 import { walletRouter } from "./routes/wallet.js";
 import { createAdminFixedSavingsRoutes } from "./routes/adminFixedSavings.js";
+import { aiTradingRouter } from "./routes/aiTrading.js";
+import { createAdminAiTradingRoutes } from "./routes/adminAiTrading.js";
 import { startFixedSavingsCron } from "./jobs/fixedSavingsCron.js";
 
 /** Built Vite app (`npm run build -w web`), resolved from `server/dist/index.js`. */
@@ -125,15 +128,18 @@ app.use("/api/portfolio", portfolioRouter);
 app.use("/api/transfers", transfersRouter);
 app.use("/api/watchlist", watchlistRouter);
 app.use("/api/history", historyRouter);
+app.use("/api/notifications", notificationsRouter);
 app.use("/api/identity", identityRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/fixed-plans", fixedSavingsRouter);
+app.use("/api/ai-trading", aiTradingRouter);
 app.use("/api/wallet", walletRouter);
 app.use("/api/deposit", depositLimiter, createPublicDepositRoutes());
 app.use("/api/admin", createAdminDepositRoutes(io));
 app.use("/api/admin", createAdminOpsRoutes(io));
 app.use("/api/admin", createAdminIdentityRoutes());
 app.use("/api/admin", createAdminFixedSavingsRoutes());
+app.use("/api/admin", createAdminAiTradingRoutes());
 
 if (serveWeb) {
   app.use(express.static(WEB_DIST, { index: false }));
