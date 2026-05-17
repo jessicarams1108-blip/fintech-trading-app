@@ -6,8 +6,8 @@ const items = [
   { to: "/ai-trading", label: "Portfolio", icon: Briefcase },
   { to: "/ai-trading/markets", label: "Markets", icon: BarChart3 },
   { to: "/ai-trading/markets", label: "Search", icon: Search },
-  { to: "/ai-trading", label: "Inbox", icon: Inbox },
-  { to: "/ai-trading", label: "Agents", icon: Atom },
+  { to: "/ai-trading/inbox", label: "Inbox", icon: Inbox },
+  { to: "/ai-trading/agent", label: "Agents", icon: Atom },
 ];
 
 export function AiTradingBottomNav() {
@@ -15,8 +15,10 @@ export function AiTradingBottomNav() {
 
   function isActive(label: string): boolean {
     if (label === "Markets" || label === "Search") return loc.pathname.startsWith("/ai-trading/markets");
-    if (label === "Portfolio" || label === "Agents")
+    if (label === "Portfolio")
       return loc.pathname === "/ai-trading" || loc.pathname.startsWith("/ai-trading/trade");
+    if (label === "Inbox") return loc.pathname.startsWith("/ai-trading/inbox");
+    if (label === "Agents") return loc.pathname.startsWith("/ai-trading/agent");
     return false;
   }
 

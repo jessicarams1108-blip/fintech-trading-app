@@ -55,6 +55,15 @@ function categoryIcon(category: string): string {
   }
 }
 
+function stripAdminCopy(text: string): string {
+  return text
+    .replace(/pending_admin/gi, "pending")
+    .replace(/\badmin\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s·\s·/g, " · ")
+    .trim();
+}
+
 function safeFormatWhen(at: string, formatDate: (date: Date | string, options?: Intl.DateTimeFormatOptions) => string): string {
   try {
     return formatDate(at, { dateStyle: "medium", timeStyle: "short" });
@@ -72,14 +81,14 @@ function mapHistoryRows(rows: Array<{ id: string; at: string; type: string; stat
   return rows.slice(0, 40).map((r) => {
     const st = String(r.status ?? "").toLowerCase();
     const amt = r.amount ? (r.asset && r.asset !== "USD" ? `${r.amount} ${r.asset}` : `$${r.amount}`) : "";
-    const pending = ["pending", "pending_review", "queued", "submitted", "under_review", "processing"].includes(st);
+    const pending = ["pending", "pending_review", "pending_admin", "queued", "submitted", "under_review", "processing"].includes(st);
     let title = r.type.replace(/_/g, " ");
     let message = r.detail ?? amt ?? r.status;
     let href = "/history";
     if (r.type === "deposit") {
       title = st === "confirmed" ? "Deposit confirmed" : st === "rejected" ? "Deposit rejected" : "Deposit under review";
       href = st === "confirmed" ? "/history?type=deposit" : "/deposit";
-      message = amt ? `${amt} · ${r.status}` : r.status;
+      message = amt ? `${amt} · ${stripAdminCopy(r.status)}` : stripAdminCopy(r.status);
     } else if (r.type === "borrow" || r.type === "borrow_request") {
       title = "Borrow activity";
       href = "/borrow";
@@ -89,7 +98,7 @@ function mapHistoryRows(rows: Array<{ id: string; at: string; type: string; stat
     } else if (r.type === "fixed_savings") {
       title = st === "matured" ? "Fixed savings matured" : "Fixed savings";
       href = "/fixed-plans?tab=my";
-      message = r.detail ?? amt ?? r.status;
+      message = stripAdminCopy(r.detail ?? amt ?? r.status);
     } else if (r.type === "identity") {
       title = st === "approved" ? "Identity verified" : "Identity verification";
       href = "/verify-identity";
@@ -97,10 +106,10 @@ function mapHistoryRows(rows: Array<{ id: string; at: string; type: string; stat
     return {
       id: r.id,
       at: r.at,
-      title,
-      message,
+      title: stripAdminCopy(title),
+      message: stripAdminCopy(message),
       category: r.type,
-      status: r.status,
+      status: stripAdminCopy(r.status),
       href,
       isPending: pending,
     };
@@ -116,7 +125,13 @@ async function fetchNotifications(token: string): Promise<{ items: NotificationI
     error?: string;
   };
   if (res.ok && body.data?.items) {
-    return { items: body.data.items, pendingCount: body.data.pendingCount ?? 0 };
+    const items = body.data.items.map((n) => ({
+      ...n,
+      title: stripAdminCopy(n.title),
+      message: stripAdminCopy(n.message),
+      status: stripAdminCopy(n.status),
+    }));
+    return { items, pendingCount: body.data.pendingCount ?? 0 };
   }
 
   if (res.status === 404) {

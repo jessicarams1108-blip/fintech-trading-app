@@ -89,7 +89,7 @@ export async function adminSetAiResult(
 }
 
 export function formatTradeResult(trade: AiTrade): string {
-  if (trade.status === "running") return "In progress";
+  if (trade.status === "running") return "Trading";
   const amt = trade.profit_loss_amount;
   if (trade.result_type === "profit") return `+$${amt.toLocaleString()} Profit`;
   if (trade.result_type === "loss") return `-$${amt.toLocaleString()} Loss`;

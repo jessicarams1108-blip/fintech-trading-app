@@ -65,7 +65,7 @@ export function AiTradingRunningPage() {
                 : "bg-amber-500/20 text-amber-400",
             )}
           >
-            {completed ? formatTradeResult(trade) : "In Progress"}
+            {completed ? formatTradeResult(trade) : "Trading"}
           </span>
         </div>
 
@@ -79,9 +79,12 @@ export function AiTradingRunningPage() {
         </div>
 
         {!completed ? (
-          <div className="mt-6 flex items-center justify-center gap-2 text-sm text-[#8E8E93]">
-            <Loader2 className="h-4 w-4 animate-spin text-oove-blue" />
-            AI is trading — admin will settle profit or loss
+          <div className="mt-6 rounded-2xl bg-[#1C1C1E] p-6 text-center">
+            <p className="text-2xl font-semibold text-white">Trading</p>
+            <div className="mt-3 flex items-center justify-center gap-2 text-sm text-[#8E8E93]">
+              <Loader2 className="h-4 w-4 animate-spin text-oove-blue" />
+              Your agent is working — results appear when the trade completes.
+            </div>
           </div>
         ) : (
           <div className="mt-6 rounded-2xl bg-[#1C1C1E] p-5 text-center">

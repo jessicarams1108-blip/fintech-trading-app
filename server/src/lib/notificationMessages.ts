@@ -25,6 +25,14 @@ function isPendingStatus(status: string): boolean {
   return PENDING_STATUSES.has(status.toLowerCase());
 }
 
+function stripAdminCopy(text: string): string {
+  return text
+    .replace(/pending_admin/gi, "pending")
+    .replace(/\badmin\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function fmtAmount(asset: string | null, amount: string | null): string {
   if (!amount) return "";
   const n = Number.parseFloat(amount);
@@ -229,7 +237,12 @@ export function mapHistoryToNotifications(entries: HistoryEntry[], limit: number
   for (const e of entries) {
     if (seen.has(e.id)) continue;
     seen.add(e.id);
-    out.push(historyEntryToNotification(e));
+    const n = historyEntryToNotification(e);
+    out.push({
+      ...n,
+      title: stripAdminCopy(n.title),
+      message: stripAdminCopy(n.message),
+    });
     if (out.length >= limit) break;
   }
   return out;

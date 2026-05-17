@@ -28,6 +28,8 @@ import { AiTradingShell } from "@/layout/AiTradingShell";
 import { AiTradingPortfolioPage } from "@/pages/ai-trading/AiTradingPortfolioPage";
 import { AiTradingMarketsPage } from "@/pages/ai-trading/AiTradingMarketsPage";
 import { AiTradingRunningPage } from "@/pages/ai-trading/AiTradingRunningPage";
+import { AiTradingInboxPage } from "@/pages/ai-trading/AiTradingInboxPage";
+import { AiTradingAgentPage } from "@/pages/ai-trading/AiTradingAgentPage";
 
 export default function App() {
   return (
@@ -44,6 +46,8 @@ export default function App() {
           <Route path="ai-trading" element={<AiTradingPortfolioPage />} />
           <Route path="ai-trading/markets" element={<AiTradingMarketsPage />} />
           <Route path="ai-trading/trade/:id" element={<AiTradingRunningPage />} />
+          <Route path="ai-trading/inbox" element={<AiTradingInboxPage />} />
+          <Route path="ai-trading/agent" element={<AiTradingAgentPage />} />
         </Route>
         <Route element={<AppShell />}>
           <Route path="dashboard" element={<DashboardPage />} />

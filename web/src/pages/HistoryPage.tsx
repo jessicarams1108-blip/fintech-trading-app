@@ -49,17 +49,16 @@ export function HistoryPage() {
 
   const csv = useMemo(() => {
     const rows = q.data?.rows ?? [];
-    const header = ["Date", "Type", "Asset", "Amount", "Direction", "Status", "Detail"];
+    const header = ["Date", "Asset", "Amount", "Direction", "Status", "Detail"];
     const lines = [header.join(",")].concat(
       rows.map((r) =>
         [
           r.at,
-          r.type,
           r.asset ?? "",
           r.amount ?? "",
           r.direction ?? "",
-          r.status,
-          (r.detail ?? "").replace(/,/g, ";"),
+          r.status.replace(/pending_admin/gi, "pending"),
+          (r.detail ?? "").replace(/,/g, ";").replace(/\badmin\b/gi, "").trim(),
         ].join(","),
       ),
     );
@@ -115,7 +114,6 @@ export function HistoryPage() {
           <thead className="text-xs uppercase text-slate-500">
             <tr>
               <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Asset</th>
               <th className="px-4 py-3">Amount</th>
               <th className="px-4 py-3">Direction</th>
@@ -126,7 +124,7 @@ export function HistoryPage() {
           <tbody>
             {q.isLoading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-slate-500">
+                <td colSpan={6} className="px-4 py-6 text-slate-500">
                   Loading…
                 </td>
               </tr>
@@ -134,7 +132,6 @@ export function HistoryPage() {
             {(q.data?.rows ?? []).map((r) => (
               <tr key={r.id} className="border-t border-slate-100">
                 <td className="px-4 py-2 text-slate-600">{new Date(r.at).toLocaleString()}</td>
-                <td className="px-4 py-2 font-medium">{r.type}</td>
                 <td className="px-4 py-2">{r.asset ?? "—"}</td>
                 <td className="px-4 py-2 tabular-nums">{r.amount ?? "—"}</td>
                 <td className="px-4 py-2 text-xs text-slate-600">{r.direction ?? "—"}</td>
@@ -148,7 +145,7 @@ export function HistoryPage() {
                           : "rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700"
                     }
                   >
-                    {r.status}
+                    {r.status.replace(/pending_admin/gi, "pending")}
                   </span>
                 </td>
                 <td className="max-w-xs truncate px-4 py-2 text-xs text-slate-500">{r.detail ?? "—"}</td>
