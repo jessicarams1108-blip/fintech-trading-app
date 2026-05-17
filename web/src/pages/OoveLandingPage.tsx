@@ -344,9 +344,6 @@ export function OoveLandingPage() {
             >
               Get started
             </Link>
-            <Link to="/deposit" className="text-sm font-semibold text-white underline decoration-white/30 underline-offset-8 hover:decoration-white">
-              Learn more
-            </Link>
           </div>
         </div>
 
