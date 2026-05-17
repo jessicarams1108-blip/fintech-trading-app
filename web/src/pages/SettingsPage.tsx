@@ -90,7 +90,7 @@ function ThemeToggle() {
 export function SettingsPage() {
   const { token, user, patchUser } = useAuth();
   const { showToast } = useToast();
-  const { currency, setCurrency, language, setLanguage } = usePreferences();
+  const { currency, setCurrency, language, setLanguage, t } = usePreferences();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("account");
 
@@ -462,7 +462,7 @@ export function SettingsPage() {
                 value={currency}
                 onChange={(e) => {
                   setCurrency(e.target.value as DisplayCurrency);
-                  showToast(`Display currency set to ${e.target.value}`, "success");
+                  showToast(t("settings.currencySet", { currency: e.target.value }), "success");
                 }}
               >
                 <option value="USD">USD</option>
@@ -480,7 +480,7 @@ export function SettingsPage() {
                 value={language}
                 onChange={(e) => {
                   setLanguage(e.target.value as DisplayLanguage);
-                  showToast("Language preference saved", "success");
+                  showToast(t("settings.languageSet"), "success");
                 }}
               >
                 <option value="en">English</option>

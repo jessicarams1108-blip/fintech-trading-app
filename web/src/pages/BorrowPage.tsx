@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
+import { usePreferences } from "@/state/PreferencesContext";
 
 type Power = {
   suppliedUsd: number;
@@ -42,6 +43,7 @@ const ASSETS = ["USDC", "USDT", "DAI"];
 export function BorrowPage() {
   const { token } = useAuth();
   const { showToast } = useToast();
+  const { formatMoney, locale } = usePreferences();
   const qc = useQueryClient();
   const [asset, setAsset] = useState("USDC");
   const [amount, setAmount] = useState("");
@@ -178,19 +180,19 @@ export function BorrowPage() {
               <div>
                 <p className="text-xs text-slate-500">Pending requests</p>
                 <p className="text-lg font-semibold tabular-nums">
-                  {(p?.pendingBorrowUsd ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                  {formatMoney(p?.pendingBorrowUsd ?? 0)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-slate-500">Available borrow</p>
                 <p className="text-lg font-semibold tabular-nums">
-                  {(p?.availableBorrowUsd ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                  {formatMoney(p?.availableBorrowUsd ?? 0)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-slate-500">Outstanding</p>
                 <p className="text-lg font-semibold tabular-nums">
-                  {(p?.outstandingBorrowUsd ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                  {formatMoney(p?.outstandingBorrowUsd ?? 0)}
                 </p>
               </div>
               <div>
@@ -242,7 +244,9 @@ export function BorrowPage() {
                   <td className="px-3 py-2 tabular-nums">${row.amount_usd}</td>
                   <td className="px-3 py-2">{row.rate_mode}</td>
                   <td className="px-3 py-2">{row.status}</td>
-                  <td className="px-3 py-2 text-xs text-slate-500">{new Date(row.created_at).toLocaleString()}</td>
+                  <td className="px-3 py-2 text-xs text-slate-500">
+                    {new Date(row.created_at).toLocaleString(locale)}
+                  </td>
                 </tr>
               ))}
             </tbody>

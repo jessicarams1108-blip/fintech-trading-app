@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
+import { usePreferences } from "@/state/PreferencesContext";
 
 async function authFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const res = await apiFetch(path, {
@@ -19,6 +20,7 @@ type Row = { symbol: string; priceUsd: number; change24hPct: number; addedAt: st
 export function WatchlistPage() {
   const { token } = useAuth();
   const { showToast } = useToast();
+  const { formatPrice, locale } = usePreferences();
   const qc = useQueryClient();
   const [sym, setSym] = useState("");
 
@@ -83,7 +85,7 @@ export function WatchlistPage() {
               <div>
                 <p className="text-lg font-bold text-slate-900">{r.symbol}</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-800">
-                  ${r.priceUsd.toLocaleString(undefined, { maximumFractionDigits: r.priceUsd < 1 ? 4 : 2 })}
+                  {formatPrice(r.priceUsd)}
                 </p>
                 <p className="text-xs text-slate-500">24h Δ: {r.change24hPct.toFixed(2)}%</p>
               </div>
@@ -91,7 +93,7 @@ export function WatchlistPage() {
                 Remove
               </button>
             </div>
-            <p className="mt-3 text-xs text-slate-400">Added {new Date(r.addedAt).toLocaleString()}</p>
+            <p className="mt-3 text-xs text-slate-400">Added {new Date(r.addedAt).toLocaleString(locale)}</p>
           </div>
         ))}
         {!q.isLoading && (q.data?.length ?? 0) === 0 ? (

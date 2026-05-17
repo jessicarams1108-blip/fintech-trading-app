@@ -4,29 +4,30 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/state/AuthContext";
 import { useTheme } from "@/state/ThemeContext";
 import { usePreferences, type DisplayCurrency, type DisplayLanguage } from "@/state/PreferencesContext";
+import type { TranslationKey } from "@/lib/i18n";
 import { DepositSocketBridge } from "@/components/DepositSocketBridge";
 
 type NavDescriptor = {
   to: string;
-  label: string;
+  labelKey: TranslationKey;
   adminOnly?: true;
 };
 
 /** Main app routes — open from the hamburger sidebar. */
 const sidebarMainNav: NavDescriptor[] = [
-  { to: "/dashboard", label: "Home" },
-  { to: "/borrow", label: "Borrow" },
-  { to: "/portfolio", label: "Portfolio" },
-  { to: "/fixed-plans", label: "Fixed savings" },
-  { to: "/watchlist", label: "Watchlist" },
-  { to: "/history", label: "History" },
+  { to: "/dashboard", labelKey: "nav.home" },
+  { to: "/borrow", labelKey: "nav.borrow" },
+  { to: "/portfolio", labelKey: "nav.portfolio" },
+  { to: "/fixed-plans", labelKey: "nav.fixedSavings" },
+  { to: "/watchlist", labelKey: "nav.watchlist" },
+  { to: "/history", labelKey: "nav.history" },
 ];
 
 const sidebarAdminNav: NavDescriptor[] = [
-  { to: "/admin/console", label: "Admin · Console", adminOnly: true },
-  { to: "/admin/deposits", label: "Admin · Deposits", adminOnly: true },
-  { to: "/admin/identity", label: "Admin · Identity", adminOnly: true },
-  { to: "/admin/fixed-savings", label: "Admin · Fixed savings", adminOnly: true },
+  { to: "/admin/console", labelKey: "nav.adminConsole", adminOnly: true },
+  { to: "/admin/deposits", labelKey: "nav.adminDeposits", adminOnly: true },
+  { to: "/admin/identity", labelKey: "nav.adminIdentity", adminOnly: true },
+  { to: "/admin/fixed-savings", labelKey: "nav.adminFixedSavings", adminOnly: true },
 ];
 
 function HamburgerIcon({ open }: { open: boolean }) {
@@ -46,7 +47,7 @@ function HamburgerIcon({ open }: { open: boolean }) {
 export function AppShell() {
   const { user, logout, isAdmin } = useAuth();
   const { theme, setTheme } = useTheme();
-  const { currency, setCurrency, language, setLanguage } = usePreferences();
+  const { currency, setCurrency, language, setLanguage, t } = usePreferences();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -109,7 +110,7 @@ export function AppShell() {
       {sidebarOpen ? (
         <button
           type="button"
-          aria-label="Close menu"
+          aria-label={t("shell.closeMenu")}
           className="fixed inset-0 z-30 bg-slate-900/25 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -147,14 +148,14 @@ export function AppShell() {
               end={item.to === "/dashboard"}
               onClick={closeSidebarMobile}
             >
-              {item.label}
+              {t(item.labelKey)}
             </NavLink>
           ))}
 
           {adminItems.length > 0 ? (
             <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
               <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Admin
+                {t("nav.admin")}
               </p>
               {adminItems.map((item) => (
                 <NavLink
@@ -168,7 +169,7 @@ export function AppShell() {
                   }
                   onClick={closeSidebarMobile}
                 >
-                  {item.label}
+                  {t(item.labelKey)}
                 </NavLink>
               ))}
             </div>
@@ -183,7 +184,7 @@ export function AppShell() {
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             aria-expanded={sidebarOpen}
             aria-controls="app-sidebar-nav"
-            aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            aria-label={sidebarOpen ? t("shell.hideMenu") : t("shell.openMenu")}
             onClick={() => setSidebarOpen((o) => !o)}
           >
             <HamburgerIcon open={sidebarOpen} />
@@ -192,7 +193,7 @@ export function AppShell() {
           <div className="hidden min-w-0 flex-1 sm:block">
             <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Oove</p>
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-              Menu: Home, Borrow, Portfolio, Watchlist, History
+              {t("shell.menuHint")}
             </p>
           </div>
 
@@ -226,19 +227,19 @@ export function AppShell() {
                 >
                   <div className="space-y-3 border-b border-slate-100 px-3 pb-3 dark:border-slate-800">
                     <div>
-                      <span className={menuLabel}>Theme</span>
+                      <span className={menuLabel}>{t("shell.theme")}</span>
                       <div className="flex gap-1">
                         <button type="button" className={themeBtn(theme === "light")} onClick={() => setTheme("light")}>
-                          Light
+                          {t("shell.themeLight")}
                         </button>
                         <button type="button" className={themeBtn(theme === "dark")} onClick={() => setTheme("dark")}>
-                          Dark
+                          {t("shell.themeDark")}
                         </button>
                       </div>
                     </div>
                     <div>
                       <label className={menuLabel} htmlFor="pref-currency">
-                        Currency
+                        {t("shell.currency")}
                       </label>
                       <select
                         id="pref-currency"
@@ -253,7 +254,7 @@ export function AppShell() {
                     </div>
                     <div>
                       <label className={menuLabel} htmlFor="pref-language">
-                        Language
+                        {t("shell.language")}
                       </label>
                       <select
                         id="pref-language"
@@ -282,7 +283,7 @@ export function AppShell() {
                         )
                       }
                     >
-                      Settings
+                      {t("shell.settings")}
                     </NavLink>
                   </div>
 
@@ -297,7 +298,7 @@ export function AppShell() {
                           logout();
                         }}
                       >
-                        Log out
+                        {t("shell.logout")}
                       </button>
                     ) : (
                       <NavLink
@@ -306,7 +307,7 @@ export function AppShell() {
                         className="block px-3 py-2.5 font-semibold text-oove-blue hover:bg-slate-50 dark:hover:bg-slate-800"
                         onClick={() => setProfileOpen(false)}
                       >
-                        Log in
+                        {t("shell.login")}
                       </NavLink>
                     )}
                   </div>

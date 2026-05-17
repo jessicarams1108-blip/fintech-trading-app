@@ -1,25 +1,16 @@
+import type { DisplayCurrency, DisplayLanguage } from "@/lib/preferencesTypes";
+import { formatDisplayPortfolioTotal } from "@/lib/displayFx";
+
 /**
  * Display rules for portfolio UI: headline totals like $100 (no trailing .00 when whole dollars),
  * and on-chain-style asset amounts like 0.0012569 BTC (trim trailing zeros, cap precision by asset class).
  */
-export function formatPortfolioTotalUsd(usd: number): string {
-  if (!Number.isFinite(usd)) return "$0";
-  const abs = Math.abs(usd);
-  if (abs >= 1) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(usd);
-  }
-  if (abs < 1e-12) return "$0";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 6,
-  }).format(usd);
+export function formatPortfolioTotalUsd(
+  usd: number,
+  currency: DisplayCurrency = "USD",
+  language: DisplayLanguage = "en",
+): string {
+  return formatDisplayPortfolioTotal(usd, currency, language);
 }
 
 const STABLE = new Set(["USDT", "USDC", "DAI", "BUSD", "TUSD", "USDP"]);

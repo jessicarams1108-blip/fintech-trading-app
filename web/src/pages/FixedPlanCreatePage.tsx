@@ -15,10 +15,10 @@ import {
   formatDateRange,
   formatPlanLabel,
   formatRate,
-  formatUsd,
   isFixedTermPlan,
   planTermDays,
 } from "@/lib/fixedSavingsUtils";
+import { usePreferences } from "@/state/PreferencesContext";
 
 function Toggle({
   checked,
@@ -52,6 +52,7 @@ export function FixedPlanCreatePage() {
   const { token } = useAuth();
   const { showToast } = useToast();
   const qc = useQueryClient();
+  const { formatMoney, t, language } = usePreferences();
 
   const navState = location.state as { rate?: string; minDays?: number; maxDays?: number } | null;
 
@@ -89,7 +90,7 @@ export function FixedPlanCreatePage() {
   const amountValid = Number.isFinite(amount) && amount >= minAmt && amount <= maxAmt && amount <= cashBox;
   const canNext = amountValid && termDays > 0;
 
-  const dateRange = useMemo(() => formatDateRange(new Date(), termDays), [termDays]);
+  const dateRange = useMemo(() => formatDateRange(new Date(), termDays, language), [termDays, language]);
 
   const rateNum = Number.parseFloat(rate);
   const returnAmount = useMemo(
@@ -135,7 +136,10 @@ export function FixedPlanCreatePage() {
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-bold text-slate-900">Create Your Plan</h1>
           {plan ? (
-            <p className="text-sm text-violet-700">{formatRate(rate)} · {formatPlanLabel(planTitle, minDays, maxDays)}</p>
+            <p className="text-sm text-violet-700">
+              {formatRate(rate, t("common.return"))} ·{" "}
+              {formatPlanLabel(planTitle, minDays, maxDays, t("common.day"), t("common.days"))}
+            </p>
           ) : null}
         </div>
       </div>
@@ -151,7 +155,7 @@ export function FixedPlanCreatePage() {
               inputMode="decimal"
               value={amountRaw}
               onChange={(e) => setAmountRaw(e.target.value)}
-              placeholder={`${formatUsd(minAmt)} - ${formatUsd(maxAmt)}`}
+              placeholder={`${formatMoney(minAmt)} - ${formatMoney(maxAmt)}`}
               className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
             />
             <button
@@ -163,22 +167,22 @@ export function FixedPlanCreatePage() {
             </button>
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            CashBox Balance: {balanceQ.isLoading ? "…" : formatUsd(cashBox)}
+            {t("fixed.cashBoxBalance")}: {balanceQ.isLoading ? "…" : formatMoney(cashBox)}
           </p>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-600">Fixed return</span>
-          <span className="font-semibold text-violet-600">{formatRate(rate)}</span>
+          <span className="text-slate-600">{t("fixed.fixedReturn")}</span>
+          <span className="font-semibold text-violet-600">{formatRate(rate, t("common.return"))}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-600">Total payout</span>
+          <span className="text-slate-600">{t("fixed.totalPayout")}</span>
           <span className="font-semibold tabular-nums text-slate-900">
-            {amountValid ? formatUsd(totalPayout) : "—"}
+            {amountValid ? formatMoney(totalPayout) : "—"}
           </span>
         </div>
         {amountValid && !disableInterest ? (
           <p className="text-xs text-slate-500">
-            Return: {formatUsd(returnAmount)} on {formatUsd(amount)} principal
+            Return: {formatMoney(returnAmount)} on {formatMoney(amount)} principal
           </p>
         ) : null}
         <div className="flex items-center justify-between gap-3 text-sm">
@@ -188,12 +192,12 @@ export function FixedPlanCreatePage() {
       </section>
 
       <section className="rounded-2xl border border-violet-100 bg-violet-50/40 p-4 shadow-sm space-y-2">
-        <p className="text-sm font-medium text-slate-700">Savings duration</p>
+        <p className="text-sm font-medium text-slate-700">{t("fixed.savingsDuration")}</p>
         <p className="text-lg font-semibold text-slate-900">{planTitle}</p>
         <p className="text-sm text-slate-600">
           {fixedTerm
-            ? `Fixed lock: ${termDays} day${termDays === 1 ? "" : "s"} · ${formatRate(rate)}`
-            : `${minDays}–${maxDays} days`}
+            ? `Fixed lock: ${termDays} ${termDays === 1 ? t("common.day") : t("common.days")} · ${formatRate(rate, t("common.return"))}`
+            : `${minDays}–${maxDays} ${t("common.days")}`}
         </p>
         <p className="text-xs text-slate-500">{dateRange}</p>
       </section>
@@ -231,11 +235,11 @@ export function FixedPlanCreatePage() {
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <h2 className="text-lg font-bold text-slate-900">Confirm your plan</h2>
             <ul className="mt-4 space-y-2 text-sm text-slate-600">
-              <li>Amount: {formatUsd(amount)}</li>
+              <li>Amount: {formatMoney(amount)}</li>
               <li>Term: {planTitle} ({termDays} days)</li>
               <li>Period: {dateRange}</li>
-              <li>Fixed return: {formatRate(rate)}</li>
-              <li>Total payout: {formatUsd(totalPayout)}</li>
+              <li>{t("fixed.fixedReturn")}: {formatRate(rate, t("common.return"))}</li>
+              <li>{t("fixed.totalPayout")}: {formatMoney(totalPayout)}</li>
               {goalName.trim() ? <li>Goal: {goalName.trim()}</li> : null}
               <li>Auto-renewal: {autoRenewal ? "On" : "Off"}</li>
               <li>Return payout: {disableInterest ? "Disabled" : "Enabled"}</li>

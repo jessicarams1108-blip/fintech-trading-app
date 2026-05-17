@@ -2,13 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/state/AuthContext";
-import { formatAssetQuantity, formatBtcEquivalent, formatPortfolioTotalUsd } from "@/lib/portfolioFormat";
+import { formatAssetQuantity, formatBtcEquivalent } from "@/lib/portfolioFormat";
 import { MaskedValue } from "@/state/BalanceVisibilityContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
 import { MarketOverviewPanel } from "@/components/MarketOverviewPanel";
 import { apiFetch } from "@/lib/apiBase";
 import { fetchFixedSavingsSummary } from "@/lib/fixedSavingsApi";
-import { formatUsd } from "@/lib/fixedSavingsUtils";
+import { usePreferences } from "@/state/PreferencesContext";
 
 type Summary = { totalValueUsd: number; change24hPct: number; allocation: { symbol: string; valueUsd: number }[] };
 type Holding = {
@@ -38,6 +38,7 @@ async function fetchJson<T>(path: string, token: string): Promise<T> {
 
 export function PortfolioPage() {
   const { token } = useAuth();
+  const { formatMoney, formatPortfolioTotal, formatPrice } = usePreferences();
 
   const topQ = useQuery({
     queryKey: ["market", "top-prices"],
@@ -110,7 +111,7 @@ export function PortfolioPage() {
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Total value</p>
               <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
-                <MaskedValue>{formatPortfolioTotalUsd(total)}</MaskedValue>
+                <MaskedValue>{formatPortfolioTotal(total)}</MaskedValue>
               </p>
               <p className="mt-1 text-lg font-medium tabular-nums text-slate-700">
                 <MaskedValue>{formatBtcEquivalent(total, btcUsdSpot)}</MaskedValue>
@@ -135,7 +136,7 @@ export function PortfolioPage() {
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium uppercase tracking-wide text-violet-700">Fixed savings</p>
               <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
-                <MaskedValue>{formatUsd(fixedTotal)}</MaskedValue>
+                <MaskedValue>{formatMoney(fixedTotal)}</MaskedValue>
               </p>
               <p className="mt-2 text-sm font-medium text-violet-600">View plans →</p>
             </div>
@@ -155,7 +156,7 @@ export function PortfolioPage() {
               <li key={a.symbol} className="flex justify-between gap-2">
                 <span className="font-medium text-slate-800">{a.symbol}</span>
                 <span className="tabular-nums text-slate-600">
-                  <MaskedValue>{formatPortfolioTotalUsd(a.valueUsd)}</MaskedValue>
+                  <MaskedValue>{formatPortfolioTotal(a.valueUsd)}</MaskedValue>
                 </span>
               </li>
             ))}
@@ -195,13 +196,13 @@ export function PortfolioPage() {
                     <MaskedValue>{formatAssetQuantity(h.symbol, h.quantity)}</MaskedValue>
                   </td>
                   <td className="px-6 py-3 tabular-nums">
-                    <MaskedValue>{formatPortfolioTotalUsd(Number.parseFloat(h.avgCostUsd))}</MaskedValue>
+                    <MaskedValue>{formatPrice(Number.parseFloat(h.avgCostUsd))}</MaskedValue>
                   </td>
                   <td className="px-6 py-3 tabular-nums">
-                    <MaskedValue>{formatPortfolioTotalUsd(h.currentPriceUsd)}</MaskedValue>
+                    <MaskedValue>{formatPrice(h.currentPriceUsd)}</MaskedValue>
                   </td>
                   <td className="px-6 py-3 tabular-nums">
-                    <MaskedValue>{formatPortfolioTotalUsd(h.valueUsd)}</MaskedValue>
+                    <MaskedValue>{formatPortfolioTotal(h.valueUsd)}</MaskedValue>
                   </td>
                   <td className={`px-6 py-3 font-medium ${h.pnlPct >= 0 ? "text-emerald-700" : "text-red-600"}`}>
                     <MaskedValue>{h.pnlPct.toFixed(2)}%</MaskedValue>

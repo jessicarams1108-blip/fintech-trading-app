@@ -15,10 +15,11 @@ import {
   formatMaturityDate,
   formatPlanLabel,
   formatRate,
-  formatUsd,
 } from "@/lib/fixedSavingsUtils";
+import { usePreferences } from "@/state/PreferencesContext";
 
 function PlanRow({ plan }: { plan: FixedPlan }) {
+  const { formatMoney, t } = usePreferences();
   const rate = Number.parseFloat(plan.rate);
   const minDeposit = Number.parseFloat(plan.min_amount);
   return (
@@ -29,9 +30,10 @@ function PlanRow({ plan }: { plan: FixedPlan }) {
         </svg>
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-slate-900">{formatRate(rate)}</p>
+        <p className="font-semibold text-slate-900">{formatRate(rate, t("common.return"))}</p>
         <p className="text-sm text-slate-500">
-          {formatPlanLabel(plan.name, plan.min_days, plan.max_days)} · Min {formatUsd(minDeposit)}
+          {formatPlanLabel(plan.name, plan.min_days, plan.max_days, t("common.day"), t("common.days"))} · {t("fixed.min")}{" "}
+          {formatMoney(minDeposit)}
         </p>
       </div>
       <Link
@@ -39,7 +41,7 @@ function PlanRow({ plan }: { plan: FixedPlan }) {
         state={{ rate: plan.rate, minDays: plan.min_days, maxDays: plan.max_days }}
         className="shrink-0 rounded-full bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700"
       >
-        Save
+        {t("common.save")}
       </Link>
     </li>
   );
@@ -54,6 +56,7 @@ function MyPlanRow({
   onWithdraw: (id: string) => void;
   withdrawing: boolean;
 }) {
+  const { formatMoney, t, language } = usePreferences();
   const amount = Number.parseFloat(sub.amount);
   const rate = Number.parseFloat(sub.rate);
   const accrued = Number.parseFloat(sub.accrued_interest ?? "0");
@@ -61,7 +64,7 @@ function MyPlanRow({
   const projected = computeTotalPayout(amount, rate, sub.days, planMinDays, sub.disable_interest);
   const projectedReturn = computeReturn(amount, rate, sub.days, planMinDays, sub.disable_interest);
   const canWithdraw = sub.status === "matured";
-  const maturityLabel = formatMaturityDate(String(sub.end_date));
+  const maturityLabel = formatMaturityDate(String(sub.end_date), language);
   const withdrawTooltip = canWithdraw
     ? "Withdraw principal and accrued interest to CashBox"
     : `Available on ${maturityLabel}`;
@@ -71,7 +74,9 @@ function MyPlanRow({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="font-semibold text-slate-900">{sub.plan_name}</p>
-          <p className="text-sm text-slate-500">{formatRate(sub.rate)} · {sub.days} days</p>
+          <p className="text-sm text-slate-500">
+            {formatRate(sub.rate, t("common.return"))} · {sub.days} {t("common.days")}
+          </p>
         </div>
         <span
           className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${
@@ -85,19 +90,21 @@ function MyPlanRow({
           {sub.status}
         </span>
       </div>
-      <p className="mt-2 text-lg font-semibold tabular-nums text-slate-900">{formatUsd(amount)}</p>
+      <p className="mt-2 text-lg font-semibold tabular-nums text-slate-900">{formatMoney(amount)}</p>
       <p className="mt-1 text-xs text-slate-500">
         {sub.start_date} → {sub.end_date}
         {sub.goal_name ? ` · ${sub.goal_name}` : ""}
       </p>
       {sub.status === "active" && accrued > 0 ? (
-        <p className="mt-1 text-xs text-emerald-700">Accrued interest: {formatUsd(accrued)}</p>
+        <p className="mt-1 text-xs text-emerald-700">
+          {t("fixed.accruedInterest")}: {formatMoney(accrued)}
+        </p>
       ) : null}
       {sub.status !== "withdrawn" ? (
         <p className="mt-1 text-xs text-slate-600">
-          {sub.status === "matured" ? "Payout" : "Projected payout"}:{" "}
-          {formatUsd(sub.status === "matured" ? amount + accrued : projected)} (
-          {formatUsd(sub.status === "matured" ? accrued : projectedReturn)} return)
+          {sub.status === "matured" ? t("fixed.payout") : t("fixed.projectedPayout")}:{" "}
+          {formatMoney(sub.status === "matured" ? amount + accrued : projected)} (
+          {formatMoney(sub.status === "matured" ? accrued : projectedReturn)} {t("common.return").toLowerCase()})
         </p>
       ) : null}
       {sub.status !== "withdrawn" && sub.status !== "renewed" ? (
@@ -109,7 +116,7 @@ function MyPlanRow({
             onClick={() => onWithdraw(sub.id)}
             className="rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {withdrawing ? "Withdrawing…" : "Withdraw"}
+            {withdrawing ? t("fixed.withdrawing") : t("fixed.withdraw")}
           </button>
         </div>
       ) : null}
@@ -120,6 +127,7 @@ function MyPlanRow({
 export function FixedPlansPage() {
   const { token } = useAuth();
   const { showToast } = useToast();
+  const { formatMoney, t } = usePreferences();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get("tab") === "my" ? "my" : "fixed";
@@ -142,7 +150,7 @@ export function FixedPlansPage() {
       void qc.invalidateQueries({ queryKey: ["fixed-plans-my"] });
       void qc.invalidateQueries({ queryKey: ["fixed-savings-summary"] });
       void qc.invalidateQueries({ queryKey: ["wallet-balance"] });
-      showToast(`Withdrawn ${formatUsd(data.payout)} to CashBox`, "success");
+      showToast(`${t("fixed.withdraw")}: ${formatMoney(data.payout)}`, "success");
     },
     onError: (e: Error) => showToast(e.message, "error"),
   });
@@ -159,14 +167,14 @@ export function FixedPlansPage() {
             onClick={() => setSearchParams({})}
             className={tab === "fixed" ? "text-violet-600" : "text-slate-400"}
           >
-            Fixed Plans
+            {t("fixed.plansTab")}
           </button>
           <button
             type="button"
             onClick={() => setSearchParams({ tab: "my" })}
             className={tab === "my" ? "text-violet-600" : "text-slate-400"}
           >
-            My Plans
+            {t("fixed.myPlansTab")}
           </button>
         </div>
         <span className="w-8" />
@@ -175,18 +183,15 @@ export function FixedPlansPage() {
       {tab === "fixed" ? (
         <>
           <div>
-            <h1 className="text-xl font-bold leading-snug text-slate-900">New savings plan — fixed returns</h1>
-            <p className="mt-2 text-sm text-slate-600">
-              Clear fixed returns per duration. Total payout uses <strong>A = P(1 + r)</strong> — principal plus your
-              plan return rate.
-            </p>
+            <h1 className="text-xl font-bold leading-snug text-slate-900">{t("fixed.title")}</h1>
+            <p className="mt-2 text-sm text-slate-600">{t("fixed.subtitle")}</p>
             <p className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-emerald-600">
-              <span aria-hidden>✓</span> Capital protected · Higher returns on longer terms
+              <span aria-hidden>✓</span> {t("fixed.capitalProtected")}
             </p>
           </div>
 
           {plansQ.isError ? <p className="text-sm text-red-600">{(plansQ.error as Error).message}</p> : null}
-          {plansQ.isLoading ? <p className="text-sm text-slate-500">Loading plans…</p> : null}
+          {plansQ.isLoading ? <p className="text-sm text-slate-500">{t("common.loading")}</p> : null}
           <ul className="space-y-3">
             {(plansQ.data ?? []).map((p) => (
               <PlanRow key={p.id} plan={p} />
@@ -194,7 +199,7 @@ export function FixedPlansPage() {
           </ul>
 
           <section className="rounded-2xl border border-violet-100 bg-violet-50/50 p-5">
-            <h2 className="font-semibold text-slate-900">Why we updated the plan</h2>
+            <h2 className="font-semibold text-slate-900">{t("fixed.whyUpdated")}</h2>
             <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-600">
               <li>Clear fixed returns per duration</li>
               <li>Easier to understand and calculate</li>

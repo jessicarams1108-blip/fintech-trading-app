@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AreaSeries, ColorType, createChart, type Time } from "lightweight-charts";
 import { apiFetch } from "@/lib/apiBase";
+import { usePreferences } from "@/state/PreferencesContext";
 
 export type AssetOverviewRange = "1d" | "7d" | "30d" | "90d" | "365d" | "max";
 
@@ -40,25 +41,9 @@ async function fetchOverview(symbol: string, range: AssetOverviewRange): Promise
   return body.data;
 }
 
-function fmtUsdCompact(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(n) || n <= 0) return "—";
-  if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `$${(n / 1e3).toFixed(2)}K`;
-  return `$${n.toFixed(2)}`;
-}
-
-function fmtPrice(n: number): string {
-  if (!Number.isFinite(n) || n <= 0) return "—";
-  if (n >= 1000) return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  if (n >= 1) return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 8 })}`;
-}
-
-function fmtSupply(n: number | null): string {
+function fmtSupply(n: number | null, locale: string): string {
   if (n == null || !Number.isFinite(n)) return "—";
-  return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  return n.toLocaleString(locale, { maximumFractionDigits: 0 });
 }
 
 type Props = {
@@ -69,6 +54,7 @@ type Props = {
 };
 
 export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }: Props) {
+  const { formatPrice, formatMoneyCompact, locale } = usePreferences();
   const [symbol, setSymbol] = useState<string>(initialSymbol);
   const [range, setRange] = useState<AssetOverviewRange>("30d");
   const chartRef = useRef<HTMLDivElement>(null);
@@ -117,7 +103,7 @@ export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }
         horzLines: { color: "rgba(148, 163, 184, 0.2)" },
       },
       localization: {
-        priceFormatter: (price: number) => fmtPrice(price),
+        priceFormatter: (price: number) => formatPrice(price),
       },
       rightPriceScale: { borderVisible: false },
       timeScale: { borderVisible: false },
@@ -184,7 +170,7 @@ export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }
           <div className="mt-4 flex flex-wrap items-baseline gap-3 border-b border-slate-100 pb-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{d.name}</p>
-              <p className="mt-1 text-3xl font-semibold tabular-nums text-slate-900">{fmtPrice(d.priceUsd)}</p>
+              <p className="mt-1 text-3xl font-semibold tabular-nums text-slate-900">{formatPrice(d.priceUsd)}</p>
               <p className={`mt-1 text-sm font-semibold tabular-nums ${(d.percentChange24h ?? 0) >= 0 ? "text-emerald-600" : "text-red-600"}`}>
                 {d.percentChange24h == null
                   ? "24h —"
@@ -197,15 +183,19 @@ export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }
           <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
             <div className="rounded-xl bg-slate-50 px-3 py-2">
               <dt className="text-xs font-medium text-slate-500">Market cap</dt>
-              <dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{fmtUsdCompact(d.marketCapUsd)}</dd>
+              <dd className="mt-0.5 font-semibold tabular-nums text-slate-900">
+                {d.marketCapUsd != null ? formatMoneyCompact(d.marketCapUsd) : "—"}
+              </dd>
             </div>
             <div className="rounded-xl bg-slate-50 px-3 py-2">
               <dt className="text-xs font-medium text-slate-500">Volume (24h)</dt>
-              <dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{fmtUsdCompact(d.volume24hUsd)}</dd>
+              <dd className="mt-0.5 font-semibold tabular-nums text-slate-900">
+                {d.volume24hUsd != null ? formatMoneyCompact(d.volume24hUsd) : "—"}
+              </dd>
             </div>
             <div className="rounded-xl bg-slate-50 px-3 py-2">
               <dt className="text-xs font-medium text-slate-500">Circulating supply</dt>
-              <dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{fmtSupply(d.circulatingSupply)}</dd>
+              <dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{fmtSupply(d.circulatingSupply, locale)}</dd>
             </div>
             <div className="rounded-xl bg-slate-50 px-3 py-2">
               <dt className="text-xs font-medium text-slate-500">Stats source</dt>

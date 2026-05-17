@@ -1,3 +1,5 @@
+import { usePreferences } from "@/state/PreferencesContext";
+
 const PRESETS = [100, 250, 500, 1000, 2500] as const;
 
 type Props = {
@@ -20,6 +22,7 @@ export function DepositUsdAmountPicker({
   spotUsdPerUnit,
   spotError,
 }: Props) {
+  const { formatMoney, formatPrice } = usePreferences();
   const amountNum = Number.parseFloat(value);
   const ok = Number.isFinite(amountNum) && amountNum >= minUsd;
   const estQty =
@@ -36,7 +39,7 @@ export function DepositUsdAmountPicker({
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-inner">
       <label className="text-sm font-medium text-slate-800">Amount to deposit (USD equivalent)</label>
       <p className="mt-1 text-xs text-slate-500">
-        Choose how much you intend to send (minimum ${minUsd.toLocaleString("en-US")}). You’ll declare the same amount when you submit proof.
+        Choose how much you intend to send (minimum {formatMoney(minUsd)}). You’ll declare the same amount when you submit proof.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {PRESETS.map((p) => (
@@ -50,7 +53,7 @@ export function DepositUsdAmountPicker({
             }`}
             onClick={() => onChange(String(p))}
           >
-            ${p.toLocaleString("en-US")}
+            {formatMoney(p)}
           </button>
         ))}
       </div>
@@ -75,14 +78,10 @@ export function DepositUsdAmountPicker({
         ) : (
           <span className="text-xs text-slate-500">
             {" "}
-            @ {fmtUsd(spotUsdPerUnit)}/{assetSymbol}
+            @ {formatPrice(spotUsdPerUnit)}/{assetSymbol}
           </span>
         )}
       </p>
     </div>
   );
-}
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: n < 1 ? 6 : 2 });
 }

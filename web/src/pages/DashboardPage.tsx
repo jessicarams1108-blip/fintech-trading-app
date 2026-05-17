@@ -7,6 +7,7 @@ import { useToast } from "@/state/ToastContext";
 import { DepositActivityPanel } from "@/components/DepositActivity";
 import { DashboardPortfolioBlock } from "@/components/DashboardPortfolioBlock";
 import { apiFetch } from "@/lib/apiBase";
+import { usePreferences } from "@/state/PreferencesContext";
 
 const MARKETS = [
   { asset: "USDC", supplyApy: "4.12%", borrowApr: "5.8%", desc: "Stablecoin liquidity" },
@@ -20,6 +21,7 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { token } = useAuth();
+  const { formatMoney } = usePreferences();
   const [summary, setSummary] = useState<LiquiditySummary | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [depositRows, setDepositRows] = useState<DepositActivityDto[]>([]);
@@ -87,7 +89,7 @@ export function DashboardPage() {
       out.push({
         done: false,
         title: "Reach cumulative supply to borrow",
-        detail: `You are at ${summary.suppliedUsd.toLocaleString("en-US", { style: "currency", currency: "USD" })} supplied (USD equivalent). About ${left.toLocaleString("en-US", { style: "currency", currency: "USD" })} more unlocks borrowing. Each deposit declaration is at least $100 — the $10,000 rule is cumulative supplied, not per transfer.`,
+        detail: `You are at ${formatMoney(summary.suppliedUsd)} supplied (USD equivalent). About ${formatMoney(left)} more unlocks borrowing. Each deposit declaration is at least ${formatMoney(100)} — the ${formatMoney(10_000)} rule is cumulative supplied, not per transfer.`,
         to: "/deposit",
         cta: "Supply",
       });
@@ -102,13 +104,13 @@ export function DashboardPage() {
       out.push({
         done: true,
         title: "Borrowing available",
-        detail: `Within about ${summary.maxBorrowUsd.toLocaleString("en-US", { style: "currency", currency: "USD" })} capacity (tier + collateral).`,
+        detail: `Within about ${formatMoney(summary.maxBorrowUsd)} capacity (tier + collateral).`,
         to: "/borrow",
         cta: "Borrow",
       });
     }
     return out;
-  }, [summary, hasPendingDeposit]);
+  }, [summary, hasPendingDeposit, formatMoney]);
 
   const liquidityHero = (
     <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50/80 to-white p-6 shadow-sm sm:p-8">
@@ -120,15 +122,15 @@ export function DashboardPage() {
         receipt-style balance growth (oTokens on the roadmap), and borrow against collateral with transparent rates and
         risk controls. To <span className="font-medium text-slate-800">borrow</span>, you need a cumulative{" "}
         <span className="font-medium text-slate-800">
-          {summary?.minSuppliedUsdToBorrow.toLocaleString("en-US", { style: "currency", currency: "USD" }) ?? "$10,000"}
+          {summary ? formatMoney(summary.minSuppliedUsdToBorrow) : formatMoney(10_000)}
         </span>{" "}
         supplied (USD equivalent) and successful identity verification (under{" "}
         <Link className="font-semibold text-oove-blue underline" to="/settings">
           Settings → Account
         </Link>
         ). Each <span className="font-medium text-slate-800">single deposit</span> you declare must be at least{" "}
-        <span className="font-medium text-slate-800">$100</span> USD equivalent — that minimum is separate from the
-        $10,000 cumulative “integrity” bar to unlock borrowing.
+        <span className="font-medium text-slate-800">{formatMoney(100)}</span> USD equivalent — that minimum is separate from the{" "}
+        {formatMoney(10_000)} cumulative “integrity” bar to unlock borrowing.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link
@@ -212,21 +214,21 @@ export function DashboardPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Total supplied (USD eq.)</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
-            {supplied.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+            {formatMoney(supplied)}
           </p>
           <p className="mt-1 text-xs text-slate-500">Across wallets</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Outstanding borrow</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
-            {(summary?.outstandingBorrowUsd ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}
+            {formatMoney(summary?.outstandingBorrowUsd ?? 0)}
           </p>
           <p className="mt-1 text-xs text-slate-500">USD equivalent</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Borrow capacity</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
-            {maxBorrow.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+            {formatMoney(maxBorrow)}
           </p>
           <p className="mt-1 text-xs text-slate-500">Tier + collateral</p>
         </div>

@@ -5,14 +5,14 @@ import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
 import type { AssetSymbol } from "@/types";
 import { uploadDepositProofIfConfigured } from "@/lib/depositProofUpload";
-import { formatAssetQuantity, formatBtcEquivalent, formatPortfolioTotalUsd } from "@/lib/portfolioFormat";
+import { formatAssetQuantity, formatBtcEquivalent } from "@/lib/portfolioFormat";
 import { MaskedValue } from "@/state/BalanceVisibilityContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
 import { MarketOverviewPanel } from "@/components/MarketOverviewPanel";
 import { DepositUsdAmountPicker } from "@/components/DepositUsdAmountPicker";
 import { apiFetch } from "@/lib/apiBase";
 import { fetchFixedSavingsSummary } from "@/lib/fixedSavingsApi";
-import { formatUsd } from "@/lib/fixedSavingsUtils";
+import { usePreferences } from "@/state/PreferencesContext";
 
 const MIN_DEPOSIT_USD = 100;
 const DASHBOARD_ASSETS: AssetSymbol[] = ["BTC", "ETH", "USDT"];
@@ -225,6 +225,7 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
 export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlowChanged?: () => void }) {
   const { token } = useAuth();
   const qc = useQueryClient();
+  const { formatMoney, formatPortfolioTotal, formatPrice, t } = usePreferences();
 
   const summaryQ = useQuery({
     queryKey: ["portfolio", "summary", token],
@@ -318,17 +319,17 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
                 <div className="flex items-start gap-2">
                   <BalanceVisibilityEyeToggle className="mt-0.5" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Total value</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{t("portfolio.totalValue")}</p>
                     <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
-                  <MaskedValue>{formatPortfolioTotalUsd(total)}</MaskedValue>
+                  <MaskedValue>{formatPortfolioTotal(total)}</MaskedValue>
                 </p>
                 <p className="mt-1 text-lg font-medium tabular-nums text-slate-700">
                   <MaskedValue>{formatBtcEquivalent(total, btcUsdSpot)}</MaskedValue>
-                  <span className="ml-1 text-xs font-normal font-sans text-slate-500">(BTC at live spot)</span>
+                  <span className="ml-1 text-xs font-normal font-sans text-slate-500">{t("portfolio.btcSpot")}</span>
                 </p>
                 <p className={`mt-2 text-sm font-medium ${chg >= 0 ? "text-emerald-600" : "text-red-600"}`}>
                   {chg >= 0 ? "+" : ""}
-                  {chg.toFixed(2)}% vs prior snapshot
+                  {t("portfolio.change24h", { pct: `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}` })}
                 </p>
                 {summaryQ.isError ? (
                   <p className="mt-2 text-sm text-red-600">{(summaryQ.error as Error).message}</p>
@@ -343,11 +344,11 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
                 <div className="flex items-start gap-2">
                   <BalanceVisibilityEyeToggle className="mt-0.5" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium uppercase tracking-wide text-violet-700">Fixed savings</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-violet-700">{t("portfolio.fixedSavings")}</p>
                     <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
-                      <MaskedValue>{formatUsd(fixedTotal)}</MaskedValue>
+                      <MaskedValue>{formatMoney(fixedTotal)}</MaskedValue>
                     </p>
-                    <p className="mt-2 text-sm font-medium text-violet-600">View plans →</p>
+                    <p className="mt-2 text-sm font-medium text-violet-600">{t("portfolio.viewPlans")}</p>
                     {fixedQ.isError ? (
                       <p className="mt-2 text-sm text-red-600">{(fixedQ.error as Error).message}</p>
                     ) : null}
@@ -356,22 +357,18 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
               </Link>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 shadow-inner">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Market assets (USD)</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("portfolio.marketAssets")}</p>
               {topQ.isError ? (
                 <p className="mt-2 text-sm text-red-600">{(topQ.error as Error).message}</p>
               ) : (
                 <ul className="mt-3 flex flex-wrap gap-2">
-                  {(topQ.data ?? []).map((t) => (
+                  {(topQ.data ?? []).map((row) => (
                     <li
-                      key={t.symbol}
+                      key={row.symbol}
                       className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-sm"
                     >
-                      <span className="font-semibold">{t.symbol}</span>{" "}
-                      <span className="tabular-nums text-slate-600">
-                        {t.priceUsd < 1
-                          ? `$${t.priceUsd.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
-                          : `$${t.priceUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-                      </span>
+                      <span className="font-semibold">{row.symbol}</span>{" "}
+                      <span className="tabular-nums text-slate-600">{formatPrice(row.priceUsd)}</span>
                     </li>
                   ))}
                 </ul>
@@ -413,13 +410,13 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
                         <MaskedValue>{formatAssetQuantity(h.symbol, h.quantity)}</MaskedValue>
                       </td>
                       <td className="px-5 py-2 tabular-nums">
-                        <MaskedValue>${Number.parseFloat(h.avgCostUsd).toFixed(4)}</MaskedValue>
+                        <MaskedValue>{formatPrice(Number.parseFloat(h.avgCostUsd))}</MaskedValue>
                       </td>
                       <td className="px-5 py-2 tabular-nums">
-                        <MaskedValue>${h.currentPriceUsd.toLocaleString()}</MaskedValue>
+                        <MaskedValue>{formatPrice(h.currentPriceUsd)}</MaskedValue>
                       </td>
                       <td className="px-5 py-2 tabular-nums">
-                        <MaskedValue>{formatPortfolioTotalUsd(h.valueUsd)}</MaskedValue>
+                        <MaskedValue>{formatPortfolioTotal(h.valueUsd)}</MaskedValue>
                       </td>
                       <td className={`px-5 py-2 font-medium ${h.pnlPct >= 0 ? "text-emerald-700" : "text-red-600"}`}>
                         <MaskedValue>{h.pnlPct.toFixed(2)}%</MaskedValue>
