@@ -211,3 +211,14 @@ export function mapVerificationState(kycStatus: string): string {
   if (kycStatus === "rejected") return "rejected";
   return "unverified";
 }
+
+/** Pending only when a real form submission exists (not legacy one-click KYC submit). */
+export function resolveEffectiveVerificationState(
+  kycStatus: string,
+  submission: Pick<IdentitySubmissionRow, "status"> | null,
+): string {
+  if (kycStatus === "verified") return "approved";
+  if (kycStatus === "rejected") return "rejected";
+  if (kycStatus === "pending" && submission?.status === "pending") return "pending";
+  return "unverified";
+}

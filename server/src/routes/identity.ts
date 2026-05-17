@@ -8,7 +8,7 @@ import { pool } from "../db/index.js";
 import {
   createIdentitySubmission,
   getLatestSubmissionForUser,
-  mapVerificationState,
+  resolveEffectiveVerificationState,
 } from "../db/queries/identityVerification.js";
 import { isKycDocumentS3Enabled, uploadKycDocument } from "../lib/kycDocumentStorage.js";
 
@@ -80,7 +80,7 @@ identityRouter.get("/status", limiter, async (req, res, next) => {
       data: {
         kycStatus: kyc.kyc_status,
         kycTier: kyc.kyc_tier,
-        verificationState: mapVerificationState(kyc.kyc_status),
+        verificationState: resolveEffectiveVerificationState(kyc.kyc_status, submission),
         email: user?.email ?? req.user!.email,
         documents: docs,
         latestSubmission: submission
@@ -115,7 +115,8 @@ identityRouter.post("/submit", limiter, async (req, res, next) => {
       res.status(400).json({ error: "Identity is already verified." });
       return;
     }
-    if (kyc.kyc_status === "pending") {
+    const existingSubmission = await getLatestSubmissionForUser(userId);
+    if (kyc.kyc_status === "pending" && existingSubmission?.status === "pending") {
       res.status(409).json({ error: "A verification request is already pending review." });
       return;
     }
