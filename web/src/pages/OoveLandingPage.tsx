@@ -238,7 +238,7 @@ export function OoveLandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 antialiased [font-feature-settings:'ss01']">
+    <div className="min-h-screen bg-white text-slate-900 antialiased dark:bg-oove-page dark:text-oove-ink [font-feature-settings:'ss01']">
       {/* Nav — Aave-style: mark + wordmark | centered links | pill CTA */}
       <header className="sticky top-0 z-50 border-b border-slate-200/60 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 py-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-6 lg:px-8">

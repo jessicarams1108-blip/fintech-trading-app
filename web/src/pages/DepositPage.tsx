@@ -235,7 +235,7 @@ export function DepositPage() {
             <div className="mt-6 flex flex-col items-center gap-4">
               {address ? (
                 <>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="keep-light rounded-2xl border border-slate-200 bg-white p-4">
                     <QRCodeSVG value={address} size={200} bgColor="#ffffff" fgColor="#0f172a" />
                   </div>
                   <div className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm break-all text-slate-900">

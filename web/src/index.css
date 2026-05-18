@@ -4,18 +4,26 @@
 
 :root {
   color-scheme: light;
+  --oove-page: 255 255 255;
+  --oove-panel: 248 250 252;
+  --oove-card: 255 255 255;
+  --oove-card-muted: 241 245 249;
+  --oove-border: 226 232 240;
+  --oove-text: 15 23 42;
+  --oove-text-muted: 51 65 85;
+  --oove-text-subtle: 100 116 139;
   --surface: 248 250 252;
   --surface-muted: 226 232 240;
 }
 
 .dark {
   color-scheme: dark;
-  --surface: 15 23 42;
-  --surface-muted: 30 41 59;
 }
 
 body {
-  @apply min-h-screen bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  @apply min-h-screen antialiased;
+  background-color: rgb(var(--oove-page));
+  color: rgb(var(--oove-text));
 }
 
 /* AI Agent Trading — always light (portfolio, markets, inbox, agents) */

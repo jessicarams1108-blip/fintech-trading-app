@@ -46,7 +46,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f4fb] text-slate-900">
+    <div className="min-h-screen bg-[#f4f4fb] text-slate-900 dark:bg-oove-page dark:text-oove-ink">
       <div className="mx-auto flex min-h-screen max-w-lg flex-col px-5 pb-10 pt-8 sm:px-8 sm:pt-12">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Sign in</h1>
         <p className="mt-2 text-sm text-slate-600">Use the email and password from your Oove account.</p>

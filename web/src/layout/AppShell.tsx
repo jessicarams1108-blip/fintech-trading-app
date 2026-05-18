@@ -97,20 +97,21 @@ export function AppShell() {
     };
   }, [profileOpen]);
 
-  const menuShell = "border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
-  const menuLabel = "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400";
+  const menuShell =
+    "border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-oove-border/60 dark:bg-oove-card dark:text-oove-ink";
+  const menuLabel = "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-oove-ink-subtle";
   const menuSelect =
-    "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100";
+    "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 dark:border-oove-border/60 dark:bg-oove-panel dark:text-oove-ink";
   const themeBtn = (active: boolean) =>
     clsx(
       "flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold transition",
       active
         ? "bg-oove-blue text-white"
-        : "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700",
+        : "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-oove-border/60 dark:bg-oove-card-muted dark:text-oove-ink-muted dark:hover:bg-oove-panel",
     );
 
   return (
-    <div className="flex min-h-screen flex-col bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 lg:flex-row">
+    <div className="flex min-h-screen flex-col bg-white text-slate-900 dark:bg-oove-page dark:text-oove-ink lg:flex-row">
       {sidebarOpen ? (
         <button
           type="button"
@@ -123,13 +124,13 @@ export function AppShell() {
       <aside
         id="app-sidebar-nav"
         className={clsx(
-          "fixed inset-y-0 left-0 z-40 flex w-56 shrink-0 flex-col gap-6 border-r border-slate-200 bg-white p-5 transition-transform duration-200 ease-out dark:border-slate-800 dark:bg-slate-900 lg:static lg:z-auto lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-56 shrink-0 flex-col gap-6 border-r border-slate-200 bg-white p-5 transition-transform duration-200 ease-out dark:border-slate-800 dark:bg-oove-panel lg:static lg:z-auto lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full pointer-events-none lg:pointer-events-auto lg:hidden",
         )}
       >
         <Link
           to="/dashboard"
-          className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900 no-underline dark:text-slate-50"
+          className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900 no-underline dark:text-oove-ink"
           onClick={closeSidebarMobile}
         >
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-oove-blue text-xs font-black text-white">
@@ -145,8 +146,8 @@ export function AppShell() {
               to={item.to}
               className={({ isActive }) =>
                 clsx(
-                  "rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800",
-                  isActive && "bg-slate-100 text-accent dark:bg-slate-800 dark:text-white",
+                  "rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-oove-card-muted",
+                  isActive && "bg-slate-100 text-accent dark:bg-oove-card-muted dark:text-white",
                 )
               }
               end={item.to === "/dashboard"}
@@ -157,7 +158,7 @@ export function AppShell() {
           ))}
 
           {adminItems.length > 0 ? (
-            <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+            <div className="mt-4 border-t border-slate-200 pt-4 dark:border-oove-border/50">
               <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t("nav.admin")}
               </p>
@@ -167,8 +168,8 @@ export function AppShell() {
                   to={item.to}
                   className={({ isActive }) =>
                     clsx(
-                      "rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800",
-                      isActive && "bg-slate-100 text-accent dark:bg-slate-800 dark:text-white",
+                      "rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-oove-card-muted",
+                      isActive && "bg-slate-100 text-accent dark:bg-oove-card-muted dark:text-white",
                     )
                   }
                   onClick={closeSidebarMobile}
@@ -181,11 +182,11 @@ export function AppShell() {
         </nav>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-slate-950">
-        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
+      <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-oove-page">
+        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-oove-page sm:px-4">
           <button
             type="button"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 dark:border-oove-border/50 dark:bg-oove-panel dark:text-slate-200 dark:hover:bg-oove-card-muted"
             aria-expanded={sidebarOpen}
             aria-controls="app-sidebar-nav"
             aria-label={sidebarOpen ? t("shell.hideMenu") : t("shell.openMenu")}
@@ -195,7 +196,7 @@ export function AppShell() {
           </button>
 
           <div className="hidden min-w-0 flex-1 sm:block">
-            <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Oove</p>
+            <p className="truncate text-sm font-semibold text-slate-800 dark:text-oove-ink">Oove</p>
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">
               {t("shell.menuHint")}
             </p>
@@ -211,7 +212,7 @@ export function AppShell() {
                 aria-expanded={profileOpen}
                 aria-haspopup="true"
                 aria-label={user?.email ? `Open account menu, signed in as ${user.email}` : "Open account menu"}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:hover:bg-slate-800"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white transition hover:bg-slate-50 dark:border-slate-600 dark:bg-oove-panel dark:hover:bg-oove-card-muted"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent to-purple-600 text-xs font-bold text-white">
                   {user?.email?.slice(0, 2).toUpperCase() ?? "--"}
@@ -266,9 +267,9 @@ export function AppShell() {
                       onClick={() => setProfileOpen(false)}
                       className={({ isActive }) =>
                         clsx(
-                          "block px-3 py-2.5 font-medium hover:bg-slate-50 dark:hover:bg-slate-800",
+                          "block px-3 py-2.5 font-medium hover:bg-slate-50 dark:hover:bg-oove-card-muted",
                           isActive
-                            ? "bg-slate-100 text-accent dark:bg-slate-800 dark:text-white"
+                            ? "bg-slate-100 text-accent dark:bg-oove-card-muted dark:text-white"
                             : "text-slate-800 dark:text-slate-200",
                         )
                       }
@@ -294,7 +295,7 @@ export function AppShell() {
                       <NavLink
                         to="/login"
                         role="menuitem"
-                        className="block px-3 py-2.5 font-semibold text-oove-blue hover:bg-slate-50 dark:hover:bg-slate-800"
+                        className="block px-3 py-2.5 font-semibold text-oove-blue hover:bg-slate-50 dark:hover:bg-oove-card-muted"
                         onClick={() => setProfileOpen(false)}
                       >
                         {t("shell.login")}
@@ -306,7 +307,7 @@ export function AppShell() {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-auto bg-white p-4 dark:bg-slate-950 md:p-8">
+        <main className="flex-1 overflow-auto bg-white p-4 dark:bg-oove-page md:p-8">
           <DepositSocketBridge />
           <Outlet />
         </main>

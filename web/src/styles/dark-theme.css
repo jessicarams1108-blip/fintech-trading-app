@@ -1,0 +1,224 @@
+/**
+ * Dark blue theme — active when <html class="dark">.
+ * Maps common light Tailwind utilities to navy surfaces and light text.
+ */
+
+.dark {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --oove-page: 7 14 35;
+  --oove-panel: 12 24 52;
+  --oove-card: 16 32 68;
+  --oove-card-muted: 22 42 82;
+  --oove-border: 48 76 138;
+  --oove-accent-glow: 42 91 219;
+
+  /* Text */
+  --oove-text: 248 250 252;
+  --oove-text-muted: 203 213 225;
+  --oove-text-subtle: 148 163 196;
+
+  --surface: 12 24 52;
+  --surface-muted: 22 42 82;
+}
+
+.dark body {
+  background-color: rgb(var(--oove-page));
+  color: rgb(var(--oove-text));
+}
+
+.dark :where(h1, h2, h3, h4, h5, h6):not(.ai-trading-light *) {
+  color: rgb(var(--oove-text));
+}
+
+/* ——— Surfaces ——— */
+.dark .bg-white:not(.keep-light) {
+  background-color: rgb(var(--oove-card)) !important;
+}
+
+.dark .ai-trading-light .bg-white {
+  background-color: #ffffff !important;
+}
+
+.dark .bg-slate-50,
+.dark .bg-slate-50\/60,
+.dark .bg-slate-50\/80,
+.dark .bg-slate-50\/90 {
+  background-color: rgb(var(--oove-card-muted) / 0.85) !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: rgb(var(--oove-panel)) !important;
+}
+
+.dark .bg-slate-200 {
+  background-color: rgb(var(--oove-border) / 0.35) !important;
+}
+
+/* ——— Typography ——— */
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: rgb(var(--oove-text)) !important;
+}
+
+.dark .text-slate-700,
+.dark .text-slate-600 {
+  color: rgb(var(--oove-text-muted)) !important;
+}
+
+.dark .text-slate-500,
+.dark .text-slate-400 {
+  color: rgb(var(--oove-text-subtle)) !important;
+}
+
+.dark .text-oove-blue {
+  color: #7ba3ff !important;
+}
+
+/* ——— Borders ——— */
+.dark .border-slate-100,
+.dark .border-slate-200 {
+  border-color: rgb(var(--oove-border) / 0.55) !important;
+}
+
+.dark .border-slate-300 {
+  border-color: rgb(var(--oove-border) / 0.75) !important;
+}
+
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(var(--oove-border) / 0.45) !important;
+}
+
+/* ——— Hover / active ——— */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover {
+  background-color: rgb(var(--oove-card-muted)) !important;
+}
+
+.dark .hover\:border-slate-300:hover {
+  border-color: rgb(var(--oove-accent-glow) / 0.5) !important;
+}
+
+/* ——— Form controls ——— */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.dark select,
+.dark textarea {
+  background-color: rgb(var(--oove-panel)) !important;
+  border-color: rgb(var(--oove-border) / 0.65) !important;
+  color: rgb(var(--oove-text)) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: rgb(var(--oove-text-subtle)) !important;
+}
+
+.dark input[type="file"]::file-selector-button {
+  background-color: rgb(var(--oove-card-muted)) !important;
+  color: rgb(var(--oove-text)) !important;
+}
+
+/* ——— Status / accent panels ——— */
+.dark .bg-blue-50 {
+  background-color: rgb(30 64 120 / 0.45) !important;
+}
+
+.dark .text-blue-950 {
+  color: rgb(191 219 254) !important;
+}
+
+.dark .border-blue-200 {
+  border-color: rgb(59 130 246 / 0.45) !important;
+}
+
+.dark .bg-violet-50,
+.dark .bg-violet-50\/40 {
+  background-color: rgb(76 29 149 / 0.35) !important;
+}
+
+.dark .border-violet-200,
+.dark .border-violet-300,
+.dark .hover\:border-violet-300:hover {
+  border-color: rgb(167 139 250 / 0.45) !important;
+}
+
+.dark .text-violet-700,
+.dark .text-violet-600 {
+  color: rgb(221 214 254) !important;
+}
+
+.dark .bg-amber-50,
+.dark .bg-amber-50\/50,
+.dark .bg-amber-50\/80,
+.dark .bg-amber-50\/90 {
+  background-color: rgb(120 53 15 / 0.4) !important;
+}
+
+.dark .text-amber-950,
+.dark .text-amber-900,
+.dark .text-amber-800,
+.dark .text-amber-700 {
+  color: rgb(253 230 138) !important;
+}
+
+.dark .border-amber-200 {
+  border-color: rgb(245 158 11 / 0.45) !important;
+}
+
+.dark .bg-red-50 {
+  background-color: rgb(127 29 29 / 0.35) !important;
+}
+
+.dark .text-red-800,
+.dark .text-red-700,
+.dark .text-red-600 {
+  color: rgb(252 165 165) !important;
+}
+
+.dark .border-red-200,
+.dark .border-red-300 {
+  border-color: rgb(248 113 113 / 0.45) !important;
+}
+
+.dark .hover\:bg-red-50:hover {
+  background-color: rgb(127 29 29 / 0.45) !important;
+}
+
+.dark .bg-emerald-50,
+.dark .bg-emerald-100 {
+  background-color: rgb(6 78 59 / 0.45) !important;
+}
+
+.dark .text-emerald-950,
+.dark .text-emerald-900,
+.dark .text-emerald-800 {
+  color: rgb(167 243 208) !important;
+}
+
+.dark .border-emerald-200 {
+  border-color: rgb(52 211 153 / 0.45) !important;
+}
+
+/* ——— Shadows on dark cards ——— */
+.dark .shadow-sm,
+.dark .shadow-md,
+.dark .shadow-lg,
+.dark .shadow-xl,
+.dark .shadow-inner {
+  --tw-shadow-color: rgb(0 0 0 / 0.35);
+}
+
+.dark .bg-\[\#f4f4fb\] {
+  background-color: rgb(var(--oove-page)) !important;
+}
+
+/* ——— Landing hero gradients (subtle dark wash) ——— */
+.dark .from-slate-50 {
+  --tw-gradient-from: rgb(var(--oove-panel)) var(--tw-gradient-from-position) !important;
+}
+
+.dark .to-white {
+  --tw-gradient-to: rgb(var(--oove-page)) var(--tw-gradient-to-position) !important;
+}
