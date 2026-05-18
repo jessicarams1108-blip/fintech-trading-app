@@ -24,7 +24,6 @@ import { FixedPlansPage } from "@/pages/FixedPlansPage";
 import { FixedPlanCreatePage } from "@/pages/FixedPlanCreatePage";
 import { AdminFixedSavingsPage } from "@/pages/AdminFixedSavingsPage";
 import { AdminAiTradingPage } from "@/pages/AdminAiTradingPage";
-import { AiTradingShell } from "@/layout/AiTradingShell";
 import { AiTradingPortfolioPage } from "@/pages/ai-trading/AiTradingPortfolioPage";
 import { AiTradingMarketsPage } from "@/pages/ai-trading/AiTradingMarketsPage";
 import { AiTradingRunningPage } from "@/pages/ai-trading/AiTradingRunningPage";
@@ -42,14 +41,12 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
 
       <Route element={<RequireAuth />}>
-        <Route element={<AiTradingShell />}>
+        <Route element={<AppShell />}>
           <Route path="ai-trading" element={<AiTradingPortfolioPage />} />
           <Route path="ai-trading/markets" element={<AiTradingMarketsPage />} />
           <Route path="ai-trading/trade/:id" element={<AiTradingRunningPage />} />
           <Route path="ai-trading/inbox" element={<AiTradingInboxPage />} />
           <Route path="ai-trading/agent" element={<AiTradingAgentPage />} />
-        </Route>
-        <Route element={<AppShell />}>
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="deposit" element={<DepositPage />} />
           <Route path="borrow" element={<BorrowPage />} />

@@ -36,7 +36,7 @@ function Toggle({
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition ${checked ? "bg-violet-600" : "bg-slate-300"}`}
+      className={`relative h-7 w-12 shrink-0 rounded-full transition ${checked ? "bg-oove-blue" : "bg-slate-300"}`}
     >
       <span
         className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition ${checked ? "left-5" : "left-0.5"}`}
@@ -128,15 +128,15 @@ export function FixedPlanCreatePage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-5 pb-28">
+    <div className="mx-auto max-w-5xl space-y-6 pb-8">
       <div className="flex items-center gap-3">
         <Link to="/fixed-plans" className="rounded-full p-2 text-slate-600 hover:bg-slate-100" aria-label="Back">
           ←
         </Link>
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-bold text-slate-900">Create Your Plan</h1>
+          <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">Create your plan</h1>
           {plan ? (
-            <p className="text-sm text-violet-700">
+            <p className="text-sm text-oove-blue">
               {formatRate(rate, t("common.return"))} ·{" "}
               {formatPlanLabel(planTitle, minDays, maxDays, t("common.day"), t("common.days"))}
             </p>
@@ -161,7 +161,7 @@ export function FixedPlanCreatePage() {
             <button
               type="button"
               onClick={fillAll}
-              className="shrink-0 text-sm font-semibold text-violet-600"
+              className="shrink-0 text-sm font-semibold text-oove-blue"
             >
               All
             </button>
@@ -172,7 +172,7 @@ export function FixedPlanCreatePage() {
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-slate-600">{t("fixed.fixedReturn")}</span>
-          <span className="font-semibold text-violet-600">{formatRate(rate, t("common.return"))}</span>
+          <span className="font-semibold text-oove-blue">{formatRate(rate, t("common.return"))}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-slate-600">{t("fixed.totalPayout")}</span>
@@ -191,7 +191,7 @@ export function FixedPlanCreatePage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-violet-100 bg-violet-50/40 p-4 shadow-sm space-y-2">
+      <section className="rounded-2xl border border-oove-blue/20 bg-oove-blue/5 p-4 shadow-sm space-y-2">
         <p className="text-sm font-medium text-slate-700">{t("fixed.savingsDuration")}</p>
         <p className="text-lg font-semibold text-slate-900">{planTitle}</p>
         <p className="text-sm text-slate-600">
@@ -225,7 +225,7 @@ export function FixedPlanCreatePage() {
         type="button"
         disabled={!canNext || subscribeM.isPending}
         onClick={() => setConfirmOpen(true)}
-        className="fixed bottom-6 left-4 right-4 mx-auto max-w-lg rounded-full bg-violet-600 py-3.5 text-center text-sm font-semibold text-white disabled:opacity-40"
+        className="w-full rounded-full bg-oove-blue py-3.5 text-center text-sm font-semibold text-white hover:brightness-105 disabled:opacity-40"
       >
         Next
       </button>
@@ -255,7 +255,7 @@ export function FixedPlanCreatePage() {
               <button
                 type="button"
                 disabled={subscribeM.isPending}
-                className="flex-1 rounded-full bg-violet-600 py-2.5 text-sm font-semibold text-white"
+                className="flex-1 rounded-full bg-oove-blue py-2.5 text-sm font-semibold text-white"
                 onClick={() => subscribeM.mutate()}
               >
                 {subscribeM.isPending ? "Saving…" : "Confirm"}

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/apiBase";
 import { useAuth } from "@/state/AuthContext";
 import { fetchAiHistory, formatTradeResult, type AiTrade } from "@/lib/aiTradingApi";
-import { AiTradingTopBar } from "@/components/ai-trading/AiTradingTopBar";
+import { AiTradingPageLayout } from "@/components/ai-trading/AiTradingPageLayout";
 import { ai } from "@/lib/aiTradingTheme";
 
 type NotificationItem = {
@@ -28,7 +28,7 @@ function tradeToInboxItem(t: AiTrade): NotificationItem {
     title: running ? "AI trade in progress" : t.result_type === "profit" ? "AI trade profit" : "AI trade closed",
     message: sanitizeText(
       running
-        ? `${t.asset} · $${t.amount.toLocaleString()} — your agent is trading`
+        ? `${t.asset} · $${t.amount.toLocaleString()}. Your agent is trading.`
         : `${t.asset} · ${formatTradeResult(t)}`,
     ),
     href: `/ai-trading/trade/${t.id}`,
@@ -83,10 +83,8 @@ export function AiTradingInboxPage() {
   }, [tradesQ.data, notifQ.data]);
 
   return (
-    <div className="ai-trading-page pb-6">
-      <AiTradingTopBar title="Inbox" />
-
-      <div className="mt-2 px-4">
+    <AiTradingPageLayout title="Inbox" description="Trade updates and platform notifications.">
+      <div>
         {tradesQ.isLoading && notifQ.isLoading ? (
           <p className="py-12 text-center text-sm text-slate-500">Loading…</p>
         ) : items.length === 0 ? (
@@ -112,7 +110,7 @@ export function AiTradingInboxPage() {
           </ul>
         )}
       </div>
-    </div>
+    </AiTradingPageLayout>
   );
 }
 

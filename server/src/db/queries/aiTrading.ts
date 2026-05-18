@@ -41,7 +41,7 @@ async function debitCashBoxUsd(client: import("pg").PoolClient, userId: string, 
     const takeUsd = Math.min(remaining, usdAvail);
     const takeAsset = takeUsd / px;
     await client.query(
-      `UPDATE wallets SET balance = balance - $3::numeric, updated_at = NOW()
+      `UPDATE wallets SET balance = balance - $3::numeric
        WHERE user_id = $1::uuid AND currency = $2`,
       [userId, cur, takeAsset],
     );
@@ -143,7 +143,7 @@ export async function depositToAiWallet(userId: string, amountUsd: number): Prom
     await debitCashBoxUsd(client, userId, amountUsd, walletId);
     const { rows } = await client.query<{ balance: string }>(
       `UPDATE ai_trading_wallets
-       SET balance = balance + $2::numeric, updated_at = NOW()
+       SET balance = balance + $2::numeric
        WHERE user_id = $1::uuid
        RETURNING balance::text`,
       [userId, amountUsd],
@@ -188,7 +188,7 @@ export async function startAiTrade(input: {
     await client.query("BEGIN");
     const { rows: balRows } = await client.query<{ balance: string }>(
       `UPDATE ai_trading_wallets
-       SET balance = balance - $2::numeric, updated_at = NOW()
+       SET balance = balance - $2::numeric
        WHERE user_id = $1::uuid AND balance >= $2::numeric
        RETURNING balance::text`,
       [input.userId, input.amountUsd],
@@ -241,7 +241,7 @@ export async function setAiTradeResult(input: {
       const credit = principal + input.profitLossAmount;
       await client.query(
         `UPDATE ai_trading_wallets
-         SET balance = balance + $2::numeric, updated_at = NOW()
+         SET balance = balance + $2::numeric
          WHERE user_id = $1::uuid`,
         [trade.user_id, credit],
       );

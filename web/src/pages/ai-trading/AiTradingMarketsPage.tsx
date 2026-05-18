@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Info } from "lucide-react";
 import { useAuth } from "@/state/AuthContext";
-import { AiTradingTopBar } from "@/components/ai-trading/AiTradingTopBar";
+import { AiTradingPageLayout } from "@/components/ai-trading/AiTradingPageLayout";
 import { AiTradingUnderlineTabs } from "@/components/ai-trading/AiTradingUnderlineTabs";
 import {
   FilterPills,
@@ -77,8 +77,7 @@ export function AiTradingMarketsPage() {
   }
 
   return (
-    <div className="ai-trading-page pb-4">
-      <AiTradingTopBar title="Markets" />
+    <AiTradingPageLayout title="Markets" description="Pick a market and start an AI trade.">
       <AiTradingUnderlineTabs tabs={TABS} active={tab} onChange={setTab} showFilter />
 
       {tab === "Stocks" && (
@@ -131,7 +130,7 @@ export function AiTradingMarketsPage() {
           <BondRows rows={sortedBonds} onPick={(r) => openTrade(r, "stocks")} />
           <HubCard
             title="Bonds Hub"
-            body="Explore & invest in bonds via AI agent — simulated educational trading."
+            body="Explore and invest in bonds via AI agent. Simulated educational trading."
             accent={ai.blue}
           />
         </>
@@ -153,13 +152,13 @@ export function AiTradingMarketsPage() {
           navigate(`/ai-trading/trade/${trade.id}`);
         }}
       />
-    </div>
+    </AiTradingPageLayout>
   );
 }
 
 function SectionHead({ title, link, extra }: { title: string; link?: string; extra?: string }) {
   return (
-    <div className="flex items-center justify-between px-4 pt-4">
+    <div className="flex items-center justify-between pt-2">
       <span className="flex items-center gap-1 text-sm font-semibold text-slate-900">
         {title}
         <Info className="h-3.5 w-3.5 text-slate-500" />
@@ -177,7 +176,7 @@ function SectionHead({ title, link, extra }: { title: string; link?: string; ext
 
 function HubCard({ title, body, accent }: { title: string; body: string; accent: string }) {
   return (
-    <div className="mx-4 mt-4 flex items-center gap-3 rounded-2xl p-4" style={{ backgroundColor: `${accent}22` }}>
+    <div className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 p-4 shadow-sm" style={{ backgroundColor: `${accent}12` }}>
       <div className="min-w-0 flex-1">
         <p className="font-semibold" style={{ color: accent }}>
           {title}
@@ -185,7 +184,7 @@ function HubCard({ title, body, accent }: { title: string; body: string; accent:
         <p className="mt-1 text-xs text-slate-500">{body}</p>
       </div>
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-900"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white"
         style={{ backgroundColor: accent }}
       >
         <ChevronRight className="h-5 w-5" />

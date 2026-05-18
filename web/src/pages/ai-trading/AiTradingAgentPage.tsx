@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import { useAuth } from "@/state/AuthContext";
 import { fetchAiBalance, fetchAiHistory, startAiTrade } from "@/lib/aiTradingApi";
-import { AiTradingTopBar } from "@/components/ai-trading/AiTradingTopBar";
+import { AiTradingPageLayout } from "@/components/ai-trading/AiTradingPageLayout";
 import { AiTradingDisclaimer } from "@/components/ai-trading/AiTradingDisclaimer";
 
 const ASSET_CLASSES = [
@@ -85,14 +85,9 @@ export function AiTradingAgentPage() {
   }
 
   return (
-    <div className="ai-trading-page pb-6">
-      <AiTradingTopBar title="AI Agent" />
-
-      <div className="mt-4 px-4">
-        <p className="text-sm text-slate-500">
-          Pick a market and amount. Your agent trades while you wait for the result.
-        </p>
-        <p className="mt-2 text-xs text-slate-400">
+    <AiTradingPageLayout title="Agents" description="Pick a market and amount. Your agent trades while you wait for the result.">
+      <div className="max-w-xl space-y-4">
+        <p className="text-sm text-slate-600">
           Buying power: ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </p>
 
@@ -186,7 +181,7 @@ export function AiTradingAgentPage() {
           <AiTradingDisclaimer />
         </div>
       </div>
-    </div>
+    </AiTradingPageLayout>
   );
 }
 

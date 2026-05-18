@@ -64,7 +64,7 @@ const en = {
   "borrow.pending": "Pending borrow",
   "borrow.available": "Available to borrow",
   "borrow.outstanding": "Outstanding",
-  "fixed.title": "New savings plan — fixed returns",
+  "fixed.title": "New savings plan with fixed returns",
   "fixed.subtitle":
     "Clear fixed returns per duration. Total payout uses principal plus your plan return rate.",
   "fixed.capitalProtected": "Capital protected · Higher returns on longer terms",
@@ -150,7 +150,7 @@ const es: Record<keyof typeof en, string> = {
   "borrow.pending": "Préstamo pendiente",
   "borrow.available": "Disponible para pedir",
   "borrow.outstanding": "Pendiente de pago",
-  "fixed.title": "Nuevo plan de ahorro — rendimiento fijo",
+  "fixed.title": "Nuevo plan de ahorro con rendimiento fijo",
   "fixed.subtitle":
     "Rendimientos fijos por plazo. El pago total usa el capital más la tasa de tu plan.",
   "fixed.capitalProtected": "Capital protegido · Más rendimiento a largo plazo",
@@ -236,7 +236,7 @@ const fr: Record<keyof typeof en, string> = {
   "borrow.pending": "Emprunt en attente",
   "borrow.available": "Disponible à emprunter",
   "borrow.outstanding": "Encours",
-  "fixed.title": "Nouveau plan d'épargne — rendement fixe",
+  "fixed.title": "Nouveau plan d'épargne à rendement fixe",
   "fixed.subtitle":
     "Rendements fixes par durée. Le paiement total repose sur le capital plus le taux du plan.",
   "fixed.capitalProtected": "Capital protégé · Meilleurs rendements long terme",
