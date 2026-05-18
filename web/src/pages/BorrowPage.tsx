@@ -123,7 +123,7 @@ export function BorrowPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <div>
-        <h1 className="text-3xl font-semibold text-slate-900">Borrow</h1>
+        <h1 className="oove-page-title">Borrow</h1>
         <p className="mt-2 max-w-3xl text-slate-600">
           Borrow stablecoins against supplied collateral. Rates are indicative APRs; interest accrues continuously between
           visits. Repay from the same asset wallet you received.
@@ -131,35 +131,55 @@ export function BorrowPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Borrow form</h2>
+        <div className="oove-card-lg space-y-4">
+          <h2 className="oove-section-title">Borrow form</h2>
           {power.isError ? <p className="text-sm text-red-600">{(power.error as Error).message}</p> : null}
-          <label className="text-sm font-medium text-slate-700">Asset</label>
-          <select className="w-full rounded-xl border border-slate-200 px-3 py-2" value={asset} onChange={(e) => setAsset(e.target.value)}>
-            {ASSETS.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-          <label className="text-sm font-medium text-slate-700">Amount (USD notional for stables)</label>
-          <input className="w-full rounded-xl border px-3 py-2 tabular-nums" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-xl bg-slate-50 p-3">
-              <p className="text-xs uppercase text-slate-500">Variable APR</p>
-              <p className="text-lg font-semibold">{rates.data?.variableApr?.toFixed(2) ?? "—"}%</p>
+          <div className="oove-stat-tile space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Asset</p>
+            <div className="flex flex-wrap gap-1">
+              {ASSETS.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => setAsset(a)}
+                  className={
+                    asset === a
+                      ? "rounded-full bg-oove-blue px-3 py-1 text-xs font-semibold text-white"
+                      : "rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  }
+                >
+                  {a}
+                </button>
+              ))}
             </div>
-            <div className="rounded-xl bg-slate-50 p-3">
-              <p className="text-xs uppercase text-slate-500">Stable APR</p>
-              <p className="text-lg font-semibold">{rates.data?.stableApr?.toFixed(2) ?? "—"}%</p>
+          </div>
+          <div className="oove-stat-tile space-y-2">
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Amount (USD notional for stables)
+            </label>
+            <input
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 tabular-nums dark:border-oove-border/50 dark:bg-oove-panel"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="oove-stat-tile">
+              <p className="text-xs font-medium text-slate-500">Variable APR</p>
+              <p className="mt-0.5 text-lg font-semibold">{rates.data?.variableApr?.toFixed(2) ?? "—"}%</p>
+            </div>
+            <div className="oove-stat-tile">
+              <p className="text-xs font-medium text-slate-500">Stable APR</p>
+              <p className="mt-0.5 text-lg font-semibold">{rates.data?.stableApr?.toFixed(2) ?? "—"}%</p>
             </div>
           </div>
           <div className="flex gap-3">
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="radio" checked={rateMode === "variable"} onChange={() => setRateMode("variable")} />
               Variable
             </label>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="radio" checked={rateMode === "stable"} onChange={() => setRateMode("stable")} />
               Stable
             </label>
@@ -174,47 +194,44 @@ export function BorrowPage() {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-3">
-            <h2 className="text-lg font-semibold text-slate-900">Collateral & power</h2>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-xs text-slate-500">Pending requests</p>
-                <p className="text-lg font-semibold tabular-nums">
-                  {formatMoney(p?.pendingBorrowUsd ?? 0)}
-                </p>
+          <div className="oove-card-lg space-y-3">
+            <h2 className="oove-section-title">Collateral & power</h2>
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              <div className="oove-stat-tile">
+                <dt className="text-xs font-medium text-slate-500">Pending requests</dt>
+                <dd className="mt-0.5 text-lg font-semibold tabular-nums">{formatMoney(p?.pendingBorrowUsd ?? 0)}</dd>
               </div>
-              <div>
-                <p className="text-xs text-slate-500">Available borrow</p>
-                <p className="text-lg font-semibold tabular-nums">
-                  {formatMoney(p?.availableBorrowUsd ?? 0)}
-                </p>
+              <div className="oove-stat-tile">
+                <dt className="text-xs font-medium text-slate-500">Available borrow</dt>
+                <dd className="mt-0.5 text-lg font-semibold tabular-nums">{formatMoney(p?.availableBorrowUsd ?? 0)}</dd>
               </div>
-              <div>
-                <p className="text-xs text-slate-500">Outstanding</p>
-                <p className="text-lg font-semibold tabular-nums">
-                  {formatMoney(p?.outstandingBorrowUsd ?? 0)}
-                </p>
+              <div className="oove-stat-tile">
+                <dt className="text-xs font-medium text-slate-500">Outstanding</dt>
+                <dd className="mt-0.5 text-lg font-semibold tabular-nums">{formatMoney(p?.outstandingBorrowUsd ?? 0)}</dd>
               </div>
-              <div>
-                <p className="text-xs text-slate-500">Max LTV</p>
-                <p className="text-lg font-semibold">{p?.maxLtvPct ?? "—"}%</p>
+              <div className="oove-stat-tile">
+                <dt className="text-xs font-medium text-slate-500">Max LTV</dt>
+                <dd className="mt-0.5 text-lg font-semibold">{p?.maxLtvPct ?? "—"}%</dd>
               </div>
-              <div>
-                <p className="text-xs text-slate-500">Health factor</p>
-                <p className="text-lg font-semibold tabular-nums">{p?.healthFactor ?? "—"}</p>
+              <div className="oove-stat-tile col-span-2">
+                <dt className="text-xs font-medium text-slate-500">Health factor</dt>
+                <dd className="mt-0.5 text-lg font-semibold tabular-nums">{p?.healthFactor ?? "—"}</dd>
               </div>
-            </div>
-            <Link to="/deposit" className="inline-flex w-full justify-center rounded-full border border-slate-200 py-2 text-sm font-semibold hover:bg-slate-50">
+            </dl>
+            <Link
+              to="/deposit"
+              className="inline-flex w-full justify-center rounded-full border border-slate-200 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
               Add more collateral
             </Link>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="font-semibold text-slate-900">Supplied balances</h3>
-            <ul className="mt-2 space-y-1 text-sm text-slate-600">
+          <div className="oove-card">
+            <h3 className="oove-section-title">Supplied balances</h3>
+            <ul className="mt-3 space-y-2 text-sm text-slate-600">
               {(p?.collateral ?? []).length === 0 ? <li>No collateral yet.</li> : null}
               {(p?.collateral ?? []).map((c) => (
-                <li key={c.asset} className="flex justify-between">
-                  <span>{c.asset}</span>
+                <li key={c.asset} className="flex justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-oove-card-muted/80">
+                  <span className="font-semibold text-slate-900">{c.asset}</span>
                   <span className="font-mono text-xs">{c.balance}</span>
                 </li>
               ))}
@@ -223,8 +240,8 @@ export function BorrowPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Borrow requests</h2>
+      <div className="oove-card-lg">
+        <h2 className="oove-section-title">Borrow requests</h2>
         <p className="mt-1 text-sm text-slate-500">Submitted amounts awaiting admin approval.</p>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -255,8 +272,8 @@ export function BorrowPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Borrowing history</h2>
+      <div className="oove-card-lg">
+        <h2 className="oove-section-title">Borrowing history</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="text-xs uppercase text-slate-500">
@@ -291,15 +308,15 @@ export function BorrowPage() {
 
       {modal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
-            <h3 className="text-lg font-semibold">Confirm borrow</h3>
+          <div className="oove-card-lg max-w-md space-y-4 shadow-xl">
+            <h3 className="oove-section-title">Confirm borrow</h3>
             <p className="text-sm text-slate-600">
               Request <span className="font-semibold">{amount || "0"}</span> {asset} at{" "}
               <span className="font-semibold">{rateMode}</span> rate. Funds credit your wallet after an administrator approves the
               request (capacity and policy are checked at approval time).
             </p>
             <div className="flex gap-3">
-              <button type="button" className="flex-1 rounded-xl border py-2 font-semibold" onClick={() => setModal(false)}>
+              <button type="button" className="flex-1 rounded-xl border border-slate-200 py-2 font-semibold" onClick={() => setModal(false)}>
                 Cancel
               </button>
               <button
@@ -317,17 +334,22 @@ export function BorrowPage() {
 
       {repayId ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
-            <h3 className="text-lg font-semibold">Repay loan</h3>
-            <input className="w-full rounded-xl border px-3 py-2" placeholder="Amount (USD)" value={repayAmt} onChange={(e) => setRepayAmt(e.target.value)} />
+          <div className="oove-card-lg max-w-md space-y-4 shadow-xl">
+            <h3 className="oove-section-title">Repay loan</h3>
+            <input
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-oove-border/50 dark:bg-oove-panel"
+              placeholder="Amount (USD)"
+              value={repayAmt}
+              onChange={(e) => setRepayAmt(e.target.value)}
+            />
             <div className="flex gap-3">
-              <button type="button" className="flex-1 rounded-xl border py-2 font-semibold" onClick={() => setRepayId(null)}>
+              <button type="button" className="flex-1 rounded-xl border border-slate-200 py-2 font-semibold" onClick={() => setRepayId(null)}>
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={repayMut.isPending}
-                className="flex-1 rounded-xl bg-slate-900 py-2 font-semibold text-white"
+                className="flex-1 rounded-xl bg-oove-blue py-2 font-semibold text-white"
                 onClick={() => repayMut.mutate()}
               >
                 Pay

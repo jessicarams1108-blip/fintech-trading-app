@@ -113,8 +113,8 @@ export function DashboardPage() {
   }, [summary, hasPendingDeposit, formatMoney]);
 
   const liquidityHero = (
-    <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50/80 to-white p-6 shadow-sm sm:p-8">
-      <p className="text-xs font-semibold uppercase tracking-wider text-oove-blue">Oove liquidity</p>
+    <div className="oove-card sm:p-6">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Oove liquidity</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Supply, earn, and borrow</h1>
       <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-base">
         Oove is inspired by leading non-custodial liquidity markets like{" "}
@@ -157,8 +157,8 @@ export function DashboardPage() {
 
       {token ? (
         <section className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">What to do next</h2>
+          <div className="oove-card-lg">
+            <h2 className="oove-section-title">What to do next</h2>
             {!summary && !loadErr ? (
               <p className="mt-4 text-sm text-slate-500">Loading your checklist…</p>
             ) : !summary ? (
@@ -210,39 +210,38 @@ export function DashboardPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{loadErr}</div>
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Total supplied (USD eq.)</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
-            {formatMoney(supplied)}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Across wallets</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Outstanding borrow</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
-            {formatMoney(summary?.outstandingBorrowUsd ?? 0)}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">USD equivalent</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Borrow capacity</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
-            {formatMoney(maxBorrow)}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Tier + collateral</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Net supply APY (est.)</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
-            {(summary?.netSupplyApyPct ?? 0).toFixed(2)}%
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Blend of base yield + utilization</p>
-        </div>
+      <section className="oove-card">
+        <h2 className="oove-section-title">Liquidity overview</h2>
+        <dl className="mt-4 grid grid-cols-2 gap-3 text-sm lg:grid-cols-4">
+          <div className="oove-stat-tile">
+            <dt className="text-xs font-medium text-slate-500">Total supplied (USD eq.)</dt>
+            <dd className="mt-0.5 text-2xl font-semibold tabular-nums text-slate-900">{formatMoney(supplied)}</dd>
+            <dd className="mt-1 text-xs text-slate-500">Across wallets</dd>
+          </div>
+          <div className="oove-stat-tile">
+            <dt className="text-xs font-medium text-slate-500">Outstanding borrow</dt>
+            <dd className="mt-0.5 text-2xl font-semibold tabular-nums text-slate-900">
+              {formatMoney(summary?.outstandingBorrowUsd ?? 0)}
+            </dd>
+            <dd className="mt-1 text-xs text-slate-500">USD equivalent</dd>
+          </div>
+          <div className="oove-stat-tile">
+            <dt className="text-xs font-medium text-slate-500">Borrow capacity</dt>
+            <dd className="mt-0.5 text-2xl font-semibold tabular-nums text-slate-900">{formatMoney(maxBorrow)}</dd>
+            <dd className="mt-1 text-xs text-slate-500">Tier + collateral</dd>
+          </div>
+          <div className="oove-stat-tile">
+            <dt className="text-xs font-medium text-slate-500">Net supply APY (est.)</dt>
+            <dd className="mt-0.5 text-2xl font-semibold tabular-nums text-slate-900">
+              {(summary?.netSupplyApyPct ?? 0).toFixed(2)}%
+            </dd>
+            <dd className="mt-1 text-xs text-slate-500">Blend of base yield + utilization</dd>
+          </div>
+        </dl>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Borrow rules (Oove)</h2>
+      <section className="oove-card-lg">
+          <h2 className="oove-section-title">Borrow rules (Oove)</h2>
           <ul className="mt-4 list-inside list-disc space-y-2 text-sm text-slate-600">
             <li>
               <strong>$100 minimum</strong> per deposit declaration (USD equivalent) when you submit a supply proof.
@@ -259,9 +258,11 @@ export function DashboardPage() {
             <li>Advanced features (flash loans, credit delegation, collateral swap) come in later releases.</li>
           </ul>
           {summary && !summary.canBorrow ? (
-            <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-              <p className="font-semibold">Borrowing locked</p>
-              <ul className="mt-2 list-inside list-disc space-y-1">
+            <div className="oove-alert-locked mt-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                Borrowing locked
+              </p>
+              <ul className="mt-2 list-inside list-disc space-y-1 text-amber-950 dark:text-amber-100">
                 {summary.borrowBlockedReasons.map((r) => (
                   <li key={r}>{r}</li>
                 ))}
@@ -270,9 +271,9 @@ export function DashboardPage() {
           ) : null}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-slate-900">Markets (preview)</h2>
+      <section className="oove-card overflow-hidden p-0">
+        <div className="border-b border-slate-200 px-5 py-4 dark:border-oove-border/50">
+          <h2 className="oove-section-title">Markets (preview)</h2>
           <p className="mt-1 text-sm text-slate-500">{summary?.oTokensNote}</p>
         </div>
         <div className="overflow-x-auto">

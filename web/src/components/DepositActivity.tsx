@@ -72,7 +72,7 @@ export function DepositActivityList({ rows }: { rows: DepositActivityDto[] }) {
       {rows.map((r) => (
         <li
           key={r.id}
-          className="rounded-xl border border-slate-100 bg-slate-50/90 px-3 py-2.5 text-sm text-slate-800"
+          className="oove-stat-tile px-3 py-2.5 text-sm text-slate-800"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="font-semibold">{r.asset}</span>
@@ -138,9 +138,9 @@ export function DepositActivityPanel({
   }, [rows, onRowsChange]);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="oove-card-lg">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+        <h2 className="oove-section-title">{title}</h2>
         {showViewAll ? (
           <Link to="/history" className="text-sm font-semibold text-oove-blue hover:underline">
             View all
