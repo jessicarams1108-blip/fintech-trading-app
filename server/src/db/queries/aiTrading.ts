@@ -3,7 +3,9 @@ import { getCashBoxBalanceUsd } from "./fixedSavings.js";
 import { CASHBOX_SPENDABLE_CURRENCIES, cashBoxUsdPrice } from "./liquidity.js";
 import { currentUtcWeekBounds } from "../../lib/aiTradingWeek.js";
 
-export const MIN_TRADE_USD = 100;
+export const MIN_TRADE_USD = 1000;
+export const MAX_TRADE_USD = 1_000_000;
+export const MIN_AI_WALLET_DEPOSIT_USD = 100;
 export const MAX_TRADES_PER_WEEK = 2;
 
 export type AiTradeRow = {
@@ -123,8 +125,8 @@ export async function listAdminTrades(opts: { status?: string }): Promise<AiTrad
 }
 
 export async function depositToAiWallet(userId: string, amountUsd: number): Promise<number> {
-  if (!Number.isFinite(amountUsd) || amountUsd < MIN_TRADE_USD) {
-    throw new Error(`Minimum deposit is $${MIN_TRADE_USD}`);
+  if (!Number.isFinite(amountUsd) || amountUsd < MIN_AI_WALLET_DEPOSIT_USD) {
+    throw new Error(`Minimum deposit is $${MIN_AI_WALLET_DEPOSIT_USD}`);
   }
   const cashBox = await getCashBoxBalanceUsd(userId);
   if (cashBox < amountUsd) throw new Error("Insufficient CashBox balance");
@@ -170,6 +172,13 @@ export async function startAiTrade(input: {
 
   const existing = await getRunningTradeForAsset(input.userId, input.asset);
   if (existing) throw new Error(`You already have a running trade for ${input.asset}`);
+
+  if (!Number.isFinite(input.amountUsd) || input.amountUsd < MIN_TRADE_USD) {
+    throw new Error(`Minimum trade amount is $${MIN_TRADE_USD.toLocaleString()}`);
+  }
+  if (input.amountUsd > MAX_TRADE_USD) {
+    throw new Error(`Maximum trade amount is $${MAX_TRADE_USD.toLocaleString()}`);
+  }
 
   const balance = await getAiWalletBalance(input.userId);
   if (balance < input.amountUsd) throw new Error("Insufficient AI trading balance");

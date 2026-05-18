@@ -134,7 +134,7 @@ export function AiTradingPortfolioPage() {
       <FundAiWalletModal
         open={fundOpen}
         onClose={() => setFundOpen(false)}
-        minAmount={bal?.minTradeUsd ?? 100}
+        minAmount={bal?.minWalletDepositUsd ?? 100}
         onFunded={() => {
           void qc.invalidateQueries({ queryKey: ["ai-balance"] });
           void qc.invalidateQueries({ queryKey: ["portfolio"] });

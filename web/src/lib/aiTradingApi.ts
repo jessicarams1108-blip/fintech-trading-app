@@ -19,6 +19,8 @@ export type AiBalance = {
   maxTradesPerWeek: number;
   canTrade: boolean;
   minTradeUsd: number;
+  maxTradeUsd: number;
+  minWalletDepositUsd?: number;
   msUntilWeekReset: number;
 };
 

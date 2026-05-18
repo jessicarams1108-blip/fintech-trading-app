@@ -141,7 +141,8 @@ export function AiTradingMarketsPage() {
         open={tradeOpen}
         onClose={() => setTradeOpen(false)}
         balance={balanceQ.data?.balance ?? 0}
-        minAmount={balanceQ.data?.minTradeUsd ?? 100}
+        minAmount={balanceQ.data?.minTradeUsd ?? 1000}
+        maxAmount={balanceQ.data?.maxTradeUsd ?? 1_000_000}
         canTrade={!!balanceQ.data?.canTrade}
         defaultAsset={pick?.asset}
         defaultClass={pick?.assetClass}

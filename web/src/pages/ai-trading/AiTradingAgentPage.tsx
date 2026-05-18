@@ -40,7 +40,8 @@ export function AiTradingAgentPage() {
   const running = (historyQ.data ?? []).find((t) => t.status === "running");
   const bal = balanceQ.data;
   const balance = bal?.balance ?? 0;
-  const minAmount = bal?.minTradeUsd ?? 100;
+  const minAmount = bal?.minTradeUsd ?? 1000;
+  const maxAmount = bal?.maxTradeUsd ?? 1_000_000;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,6 +53,10 @@ export function AiTradingAgentPage() {
     const num = Number.parseFloat(amount);
     if (!Number.isFinite(num) || num < minAmount) {
       setError(`Minimum trade is $${minAmount.toLocaleString()}`);
+      return;
+    }
+    if (num > maxAmount) {
+      setError(`Maximum trade is $${maxAmount.toLocaleString()}`);
       return;
     }
     if (num > balance) {
@@ -144,16 +149,18 @@ export function AiTradingAgentPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-medium text-slate-500">Amount (USD)</label>
+            <label className="mb-2 block text-xs font-medium text-slate-500">
+              Amount (${minAmount.toLocaleString()} – ${maxAmount.toLocaleString()} USD)
+            </label>
             <input
               type="number"
               min={minAmount}
-              max={balance}
+              max={Math.min(balance, maxAmount)}
               step="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-oove-blue"
-              placeholder={`Min $${minAmount}`}
+              placeholder={`$${minAmount.toLocaleString()} – $${maxAmount.toLocaleString()}`}
             />
           </div>
 

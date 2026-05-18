@@ -14,6 +14,7 @@ type Props = {
   onClose: () => void;
   balance: number;
   minAmount: number;
+  maxAmount: number;
   canTrade: boolean;
   defaultAsset?: string;
   defaultClass?: string;
@@ -25,6 +26,7 @@ export function StartTradeModal({
   onClose,
   balance,
   minAmount,
+  maxAmount,
   canTrade,
   defaultAsset = "BTC",
   defaultClass = "crypto",
@@ -44,6 +46,10 @@ export function StartTradeModal({
     const num = Number.parseFloat(amount);
     if (!Number.isFinite(num) || num < minAmount) {
       setError(`Minimum trade is $${minAmount.toLocaleString()}`);
+      return;
+    }
+    if (num > maxAmount) {
+      setError(`Maximum trade is $${maxAmount.toLocaleString()}`);
       return;
     }
     if (num > balance) {
@@ -108,18 +114,21 @@ export function StartTradeModal({
 
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-500">
-              Amount (max ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })})
+              Amount (${minAmount.toLocaleString()} – ${maxAmount.toLocaleString()} USD)
             </label>
             <input
               type="number"
               min={minAmount}
-              max={balance}
+              max={Math.min(balance, maxAmount)}
               step="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-oove-blue"
-              placeholder={`Min $${minAmount}`}
+              placeholder={`$${minAmount.toLocaleString()} – $${maxAmount.toLocaleString()}`}
             />
+            <p className="mt-1 text-[10px] text-slate-400">
+              Buying power: ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </p>
           </div>
 
           {error ? <p className="text-xs text-red-600">{error}</p> : null}

@@ -9,6 +9,8 @@ import {
   getAiWalletBalance,
   listUserTrades,
   MAX_TRADES_PER_WEEK,
+  MAX_TRADE_USD,
+  MIN_AI_WALLET_DEPOSIT_USD,
   MIN_TRADE_USD,
   serializeTrade,
   startAiTrade,
@@ -33,6 +35,8 @@ aiTradingRouter.get("/balance", limiter, async (req, res, next) => {
         maxTradesPerWeek: MAX_TRADES_PER_WEEK,
         canTrade,
         minTradeUsd: MIN_TRADE_USD,
+        maxTradeUsd: MAX_TRADE_USD,
+        minWalletDepositUsd: MIN_AI_WALLET_DEPOSIT_USD,
         msUntilWeekReset: msUntilWeekReset(),
       },
     });
@@ -60,7 +64,11 @@ aiTradingRouter.post("/start-trade", limiter, async (req, res, next) => {
   try {
     const body = startSchema.parse(req.body);
     if (body.amount < MIN_TRADE_USD) {
-      res.status(400).json({ error: `Minimum trade amount is $${MIN_TRADE_USD}` });
+      res.status(400).json({ error: `Minimum trade amount is $${MIN_TRADE_USD.toLocaleString()}` });
+      return;
+    }
+    if (body.amount > MAX_TRADE_USD) {
+      res.status(400).json({ error: `Maximum trade amount is $${MAX_TRADE_USD.toLocaleString()}` });
       return;
     }
     const trade = await startAiTrade({
