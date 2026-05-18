@@ -13,6 +13,8 @@ type Props = {
   spotUsdPerUnit: number | null;
   /** When true, spot failed to load */
   spotError?: boolean;
+  /** `panel` matches home Markets stat blocks; `card` is the bordered supply-page style */
+  variant?: "card" | "panel";
 };
 
 export function DepositUsdAmountPicker({
@@ -23,6 +25,7 @@ export function DepositUsdAmountPicker({
   assetSymbol,
   spotUsdPerUnit,
   spotError,
+  variant = "card",
 }: Props) {
   const { formatMoney, formatPrice } = usePreferences();
   const amountNum = Number.parseFloat(value);
@@ -40,9 +43,22 @@ export function DepositUsdAmountPicker({
     return q.toFixed(8).replace(/\.?0+$/, "") || "0";
   }
 
+  const shell =
+    variant === "panel"
+      ? "rounded-xl bg-slate-50 p-4 dark:bg-oove-card-muted/80"
+      : "rounded-xl border border-slate-200 bg-white p-4 shadow-inner";
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-inner">
-      <label className="text-sm font-medium text-slate-800">Amount to deposit (USD equivalent)</label>
+    <div className={shell}>
+      <label
+        className={
+          variant === "panel"
+            ? "text-xs font-medium uppercase tracking-wide text-slate-500"
+            : "text-sm font-medium text-slate-800"
+        }
+      >
+        Amount to deposit (USD equivalent)
+      </label>
       <p className="mt-1 text-xs text-slate-500">
         Choose how much you intend to send (
         {maxUsd != null
@@ -70,7 +86,11 @@ export function DepositUsdAmountPicker({
         type="number"
         min={minUsd}
         step="0.01"
-        className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm tabular-nums text-slate-900"
+        className={
+          variant === "panel"
+            ? "mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm tabular-nums text-slate-900 dark:border-oove-border/50 dark:bg-oove-panel"
+            : "mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm tabular-nums text-slate-900"
+        }
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />

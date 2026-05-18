@@ -134,15 +134,17 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/80 p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-900">Deposit</h3>
-      <p className="mt-1 text-sm text-slate-600">
-        Choose asset and declared USD, attach a proof file if you have one, then submit after you have sent funds.
-        Confirmation usually arrives within a few minutes.
-      </p>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div>
+        <h3 className="text-lg font-semibold text-slate-900">Deposit</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          Choose asset and declared USD, attach a proof file if you have one, then submit after you have sent funds.
+          Confirmation usually arrives within a few minutes.
+        </p>
+      </div>
 
       {awaitingId ? (
-        <div className="mt-5 space-y-3 rounded-xl border border-amber-200 bg-amber-50/90 p-4">
+        <div className="mt-4 space-y-3 rounded-xl border border-amber-200 bg-amber-50/90 p-4">
           <p className="text-sm font-semibold text-amber-950">Waiting for confirmation</p>
           <p className="text-sm text-amber-900">
             Typical review time: <strong>2–10 minutes</strong>. You can leave this page — progress also appears in{" "}
@@ -164,20 +166,25 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
         </div>
       ) : null}
 
-      <form className="mt-4 space-y-3" onSubmit={onSubmit}>
+      <form className="mt-4 space-y-4" onSubmit={onSubmit}>
         <div>
-          <label className="text-xs font-medium uppercase text-slate-500">Asset</label>
-          <select
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            value={asset}
-            onChange={(e) => setAsset(e.target.value as AssetSymbol)}
-          >
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Asset</p>
+          <div className="mt-2 flex flex-wrap gap-1">
             {DASHBOARD_ASSETS.map((a) => (
-              <option key={a} value={a}>
+              <button
+                key={a}
+                type="button"
+                onClick={() => setAsset(a)}
+                className={
+                  asset === a
+                    ? "rounded-full bg-oove-blue px-3 py-1 text-xs font-semibold text-white"
+                    : "rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                }
+              >
                 {a}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
         <DepositUsdAmountPicker
           minUsd={MIN_DEPOSIT_USD}
@@ -186,16 +193,17 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
           assetSymbol={asset}
           spotUsdPerUnit={priceQ.data ?? null}
           spotError={priceQ.isError}
+          variant="panel"
         />
-        <div>
-          <label className="text-xs font-medium uppercase text-slate-500">Proof file</label>
+        <div className="rounded-xl bg-slate-50 p-4 dark:bg-oove-card-muted/80">
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Proof file</label>
           <input
             type="file"
             accept="image/*,application/pdf"
-            className="mt-1 w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-semibold"
+            className="mt-2 w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold dark:file:bg-oove-panel"
             onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
           />
-          {proofFile ? <p className="mt-1 text-xs text-slate-500">Selected: {proofFile.name}</p> : null}
+          {proofFile ? <p className="mt-2 text-xs text-slate-500">Selected: {proofFile.name}</p> : null}
         </div>
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         <button
