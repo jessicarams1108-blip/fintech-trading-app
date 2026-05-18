@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/state/AuthContext";
 import { fetchCashBoxBalance } from "@/lib/fixedSavingsApi";
 import { depositToAiWallet } from "@/lib/aiTradingApi";
+import { ai } from "@/lib/aiTradingTheme";
 
 type Props = {
   open: boolean;
@@ -56,35 +57,35 @@ export function FundAiWalletModal({ open, onClose, minAmount, onFunded }: Props)
   }
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/70 p-4 sm:items-center" role="dialog" aria-modal="true">
-      <div className="w-full max-w-md rounded-2xl bg-[#1C1C1E] p-4 text-white shadow-2xl">
+    <div className="fixed inset-0 z-[300] flex items-end justify-center bg-slate-900/40 p-4 sm:items-center" role="dialog" aria-modal="true">
+      <div className="w-full max-w-md rounded-2xl bg-white p-4 text-slate-900 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Fund AI wallet</h2>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-[#8E8E93]" aria-label="Close">
+          <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-500 hover:bg-slate-100" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {mode === "choose" ? (
           <div className="space-y-3">
-            <p className="text-sm text-[#8E8E93]">Choose how to add buying power for AI trading.</p>
+            <p className="text-sm text-slate-600">Choose how to add buying power for AI trading.</p>
             <button
               type="button"
               onClick={() => setMode("cashbox")}
-              className="w-full rounded-xl border border-white/10 bg-black px-4 py-4 text-left hover:border-oove-blue"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-left hover:border-oove-blue"
             >
-              <p className="font-semibold text-white">Use asset balance</p>
-              <p className="mt-1 text-xs text-[#8E8E93]">
+              <p className="font-semibold text-slate-900">Use asset balance</p>
+              <p className="mt-1 text-xs text-slate-500">
                 Transfer from CashBox · available ${cashBoxUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </p>
             </button>
             <Link
               to="/deposit"
               onClick={onClose}
-              className="block w-full rounded-xl border border-white/10 bg-black px-4 py-4 text-left hover:border-oove-blue"
+              className="block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-left hover:border-oove-blue"
             >
-              <p className="font-semibold text-white">Add new deposit</p>
-              <p className="mt-1 text-xs text-[#8E8E93]">Submit a deposit proof to fund your CashBox first</p>
+              <p className="font-semibold text-slate-900">Add new deposit</p>
+              <p className="mt-1 text-xs text-slate-500">Submit a deposit proof to fund your CashBox first</p>
             </Link>
           </div>
         ) : (
@@ -92,21 +93,22 @@ export function FundAiWalletModal({ open, onClose, minAmount, onFunded }: Props)
             <button type="button" className="text-xs text-oove-blue" onClick={() => setMode("choose")}>
               ← Back
             </button>
-            <p className="text-xs text-[#8E8E93]">CashBox available: ${cashBoxUsd.toLocaleString()}</p>
+            <p className="text-xs text-slate-500">CashBox available: ${cashBoxUsd.toLocaleString()}</p>
             <input
               type="number"
               min={minAmount}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder={`Amount (min $${minAmount})`}
-              className="w-full rounded-xl border border-white/10 bg-black px-3 py-2.5 text-sm outline-none focus:border-oove-blue"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-oove-blue"
             />
-            {error ? <p className="text-xs text-red-400">{error}</p> : null}
+            {error ? <p className="text-xs text-red-600">{error}</p> : null}
             <button
               type="button"
               disabled={loading}
               onClick={() => void transferFromCashBox()}
-              className="w-full rounded-xl bg-oove-blue py-3 text-sm font-semibold text-white disabled:opacity-50"
+              className="w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: ai.blue }}
             >
               {loading ? "Transferring…" : "Transfer to AI wallet"}
             </button>
@@ -116,3 +118,4 @@ export function FundAiWalletModal({ open, onClose, minAmount, onFunded }: Props)
     </div>
   );
 }
+

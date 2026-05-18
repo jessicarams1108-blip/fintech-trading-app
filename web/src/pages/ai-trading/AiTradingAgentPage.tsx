@@ -80,14 +80,14 @@ export function AiTradingAgentPage() {
   }
 
   return (
-    <div className="pb-6">
+    <div className="ai-trading-page pb-6">
       <AiTradingTopBar title="AI Agent" />
 
       <div className="mt-4 px-4">
-        <p className="text-sm text-[#8E8E93]">
+        <p className="text-sm text-slate-500">
           Pick a market and amount. Your agent trades while you wait for the result.
         </p>
-        <p className="mt-2 text-xs text-[#636366]">
+        <p className="mt-2 text-xs text-slate-400">
           Buying power: ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </p>
 
@@ -103,7 +103,7 @@ export function AiTradingAgentPage() {
 
         <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 space-y-4">
           <div>
-            <label className="mb-2 block text-xs font-medium text-[#8E8E93]">Market type</label>
+            <label className="mb-2 block text-xs font-medium text-slate-500">Market type</label>
             <div className="flex gap-2">
               {ASSET_CLASSES.map((c) => (
                 <button
@@ -112,7 +112,7 @@ export function AiTradingAgentPage() {
                   onClick={() => setAssetClass(c.id)}
                   className={clsx(
                     "flex-1 rounded-xl py-2.5 text-sm font-semibold",
-                    assetClass === c.id ? "bg-oove-blue text-white" : "bg-[#1C1C1E] text-[#8E8E93]",
+                    assetClass === c.id ? "bg-oove-blue text-white" : "bg-slate-100 text-slate-600",
                   )}
                 >
                   {c.label}
@@ -122,11 +122,11 @@ export function AiTradingAgentPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-medium text-[#8E8E93]">Symbol</label>
+            <label className="mb-2 block text-xs font-medium text-slate-500">Symbol</label>
             <input
               value={asset}
               onChange={(e) => setAsset(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#1C1C1E] px-3 py-3 text-sm outline-none focus:border-oove-blue"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-oove-blue"
               placeholder="e.g. BTC, AAPL"
             />
             <div className="mt-2 flex flex-wrap gap-2">
@@ -135,7 +135,7 @@ export function AiTradingAgentPage() {
                   key={sym}
                   type="button"
                   onClick={() => setAsset(sym)}
-                  className="rounded-lg bg-black px-2.5 py-1 text-xs text-[#8E8E93] hover:text-white"
+                  className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs text-slate-500 hover:text-slate-900"
                 >
                   {sym}
                 </button>
@@ -144,7 +144,7 @@ export function AiTradingAgentPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-medium text-[#8E8E93]">Amount (USD)</label>
+            <label className="mb-2 block text-xs font-medium text-slate-500">Amount (USD)</label>
             <input
               type="number"
               min={minAmount}
@@ -152,7 +152,7 @@ export function AiTradingAgentPage() {
               step="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#1C1C1E] px-3 py-3 text-sm outline-none focus:border-oove-blue"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-oove-blue"
               placeholder={`Min $${minAmount}`}
             />
           </div>
@@ -182,3 +182,4 @@ export function AiTradingAgentPage() {
     </div>
   );
 }
+

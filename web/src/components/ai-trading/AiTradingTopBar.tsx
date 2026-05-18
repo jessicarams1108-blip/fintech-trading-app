@@ -3,17 +3,16 @@ import { ArrowLeft } from "lucide-react";
 
 export function AiTradingTopBar({ title }: { title?: string }) {
   return (
-    <header className="px-4 pt-2">
+    <header className="flex items-center gap-3 px-4 pb-2 pt-3">
       <Link
         to="/dashboard"
-        className="inline-flex items-center gap-2 rounded-lg py-2 text-sm font-medium text-[#8E8E93] transition hover:text-white"
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100"
         aria-label="Back to home"
       >
         <ArrowLeft className="h-5 w-5" strokeWidth={2} />
-        Home
       </Link>
       {title ? (
-        <h1 className="mt-4 text-[2rem] font-semibold leading-tight tracking-tight text-white">{title}</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h1>
       ) : null}
     </header>
   );

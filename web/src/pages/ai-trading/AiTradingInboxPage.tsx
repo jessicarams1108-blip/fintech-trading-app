@@ -83,29 +83,29 @@ export function AiTradingInboxPage() {
   }, [tradesQ.data, notifQ.data]);
 
   return (
-    <div className="pb-6">
+    <div className="ai-trading-page pb-6">
       <AiTradingTopBar title="Inbox" />
 
       <div className="mt-2 px-4">
         {tradesQ.isLoading && notifQ.isLoading ? (
-          <p className="py-12 text-center text-sm text-[#8E8E93]">Loading…</p>
+          <p className="py-12 text-center text-sm text-slate-500">Loading…</p>
         ) : items.length === 0 ? (
-          <p className="py-12 text-center text-sm text-[#8E8E93]">No messages yet. Start trading with your agent to see updates here.</p>
+          <p className="py-12 text-center text-sm text-slate-500">No messages yet. Start trading with your agent to see updates here.</p>
         ) : (
-          <ul className="divide-y divide-white/[0.06] rounded-2xl overflow-hidden" style={{ backgroundColor: ai.card }}>
+          <ul className="divide-y divide-slate-100 rounded-2xl overflow-hidden" style={{ backgroundColor: ai.card }}>
             {items.map((item) => (
               <li key={item.id}>
-                <Link to={item.href} className="flex flex-col gap-1 px-4 py-4 hover:bg-white/[0.03]">
+                <Link to={item.href} className="flex flex-col gap-1 px-4 py-4 hover:bg-slate-50">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium text-white">{item.title}</p>
+                    <p className="font-medium text-slate-900">{item.title}</p>
                     {item.isPending ? (
                       <span className="shrink-0 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
                         Active
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-sm text-[#8E8E93]">{item.message}</p>
-                  <p className="text-[10px] text-[#636366]">{new Date(item.at).toLocaleString()}</p>
+                  <p className="text-sm text-slate-500">{item.message}</p>
+                  <p className="text-[10px] text-slate-400">{new Date(item.at).toLocaleString()}</p>
                 </Link>
               </li>
             ))}
@@ -115,3 +115,4 @@ export function AiTradingInboxPage() {
     </div>
   );
 }
+

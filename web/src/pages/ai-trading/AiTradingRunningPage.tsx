@@ -25,7 +25,7 @@ export function AiTradingRunningPage() {
   if (historyQ.isLoading) {
     return (
       <div className="flex justify-center py-24">
-        <Loader2 className="h-8 w-8 animate-spin text-[#8E8E93]" />
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
       </div>
     );
   }
@@ -33,7 +33,7 @@ export function AiTradingRunningPage() {
   if (!trade) {
     return (
       <div className="px-4 py-16 text-center">
-        <p className="text-[#8E8E93]">Trade not found</p>
+        <p className="text-slate-500">Trade not found</p>
         <Link to="/ai-trading" className="mt-4 inline-block text-sm font-semibold text-oove-blue">
           Back to portfolio
         </Link>
@@ -45,13 +45,13 @@ export function AiTradingRunningPage() {
   const chartColor = completed && trade.result_type === "loss" ? ai.red : trade.result_type === "profit" ? ai.green : ai.blue;
 
   return (
-    <div className="pb-8">
+    <div className="ai-trading-page pb-8">
       <AiTradingTopBar />
       <div className="px-4 pt-2">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-semibold">{trade.asset}</h1>
-            <p className="mt-1 text-[#8E8E93]">
+            <h1 className="text-3xl font-semibold text-slate-900">{trade.asset}</h1>
+            <p className="mt-1 text-slate-500">
               ${trade.amount.toLocaleString()} · {trade.asset_class}
             </p>
           </div>
@@ -69,34 +69,34 @@ export function AiTradingRunningPage() {
           </span>
         </div>
 
-        <p className="mt-3 text-xs text-[#8E8E93]">
+        <p className="mt-3 text-xs text-slate-500">
           Started {new Date(trade.start_time).toLocaleString()}
           {trade.end_time ? ` · Ended ${new Date(trade.end_time).toLocaleString()}` : null}
         </p>
 
-        <div className="mt-4 rounded-2xl bg-[#1C1C1E] p-2">
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-2">
           <FakeLiveChart height={240} baseValue={trade.amount} accent={chartColor} />
         </div>
 
         {!completed ? (
-          <div className="mt-6 rounded-2xl bg-[#1C1C1E] p-6 text-center">
-            <p className="text-2xl font-semibold text-white">Trading</p>
-            <div className="mt-3 flex items-center justify-center gap-2 text-sm text-[#8E8E93]">
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center">
+            <p className="text-2xl font-semibold text-slate-900">Trading</p>
+            <div className="mt-3 flex items-center justify-center gap-2 text-sm text-slate-600">
               <Loader2 className="h-4 w-4 animate-spin text-oove-blue" />
               Your agent is working — results appear when the trade completes.
             </div>
           </div>
         ) : (
-          <div className="mt-6 rounded-2xl bg-[#1C1C1E] p-5 text-center">
-            <p className="text-xl font-semibold">{formatTradeResult(trade)}</p>
-            <p className="mt-1 text-xs text-[#8E8E93]">AI wallet updated</p>
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center">
+            <p className="text-xl font-semibold text-slate-900">{formatTradeResult(trade)}</p>
+            <p className="mt-1 text-xs text-slate-500">AI wallet updated</p>
           </div>
         )}
 
         <button
           type="button"
           onClick={() => void qc.invalidateQueries({ queryKey: ["ai-history"] })}
-          className="mt-4 w-full rounded-xl border border-white/10 py-3 text-sm text-[#8E8E93]"
+          className="mt-4 w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-600"
         >
           Refresh status
         </button>
@@ -108,3 +108,4 @@ export function AiTradingRunningPage() {
     </div>
   );
 }
+

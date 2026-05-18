@@ -1,12 +1,12 @@
-/** Oove AI trading shell — Public.com layout on brand colors */
+/** Oove AI trading shell — light theme */
 export const ai = {
-  bg: "#000000",
-  card: "#1C1C1E",
-  cardElevated: "#2C2C2E",
-  border: "rgba(255,255,255,0.08)",
-  text: "#FFFFFF",
-  muted: "#8E8E93",
+  bg: "#FFFFFF",
+  card: "#F5F5F7",
+  cardElevated: "#E8E8ED",
+  border: "rgba(0,0,0,0.08)",
+  text: "#111827",
+  muted: "#6B7280",
   blue: "#2A5BDB",
-  green: "#00D395",
-  red: "#FF453A",
+  green: "#00A67E",
+  red: "#DC2626",
 } as const;

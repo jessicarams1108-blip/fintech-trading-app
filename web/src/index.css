@@ -18,6 +18,20 @@ body {
   @apply min-h-screen bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
 }
 
+/* AI Agent Trading — always light (portfolio, markets, inbox, agents) */
+.ai-trading-light {
+  color-scheme: light;
+  background-color: #ffffff !important;
+  color: #0f172a;
+}
+
+.ai-trading-page {
+  flex: 1;
+  width: 100%;
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;

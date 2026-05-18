@@ -77,7 +77,7 @@ export function AiTradingMarketsPage() {
   }
 
   return (
-    <div className="pb-4">
+    <div className="ai-trading-page pb-4">
       <AiTradingTopBar title="Markets" />
       <AiTradingUnderlineTabs tabs={TABS} active={tab} onChange={setTab} showFilter />
 
@@ -159,16 +159,16 @@ export function AiTradingMarketsPage() {
 function SectionHead({ title, link, extra }: { title: string; link?: string; extra?: string }) {
   return (
     <div className="flex items-center justify-between px-4 pt-4">
-      <span className="flex items-center gap-1 text-sm font-semibold text-white">
+      <span className="flex items-center gap-1 text-sm font-semibold text-slate-900">
         {title}
-        <Info className="h-3.5 w-3.5 text-[#8E8E93]" />
+        <Info className="h-3.5 w-3.5 text-slate-500" />
       </span>
       {link ? (
         <button type="button" className="text-sm font-medium text-oove-blue">
           {link}
         </button>
       ) : extra ? (
-        <span className="text-xs text-[#8E8E93]">{extra} ↓</span>
+        <span className="text-xs text-slate-500">{extra} ↓</span>
       ) : null}
     </div>
   );
@@ -181,10 +181,10 @@ function HubCard({ title, body, accent }: { title: string; body: string; accent:
         <p className="font-semibold" style={{ color: accent }}>
           {title}
         </p>
-        <p className="mt-1 text-xs text-[#8E8E93]">{body}</p>
+        <p className="mt-1 text-xs text-slate-500">{body}</p>
       </div>
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-900"
         style={{ backgroundColor: accent }}
       >
         <ChevronRight className="h-5 w-5" />
@@ -195,7 +195,7 @@ function HubCard({ title, body, accent }: { title: string; body: string; accent:
 
 function BondRows({ rows, onPick }: { rows: MarketRow[]; onPick: (r: MarketRow) => void }) {
   return (
-    <ul className="divide-y divide-white/[0.06]">
+    <ul className="divide-y divide-slate-100">
       {rows.map((r) => (
         <li key={r.id}>
           <button type="button" onClick={() => onPick(r)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
@@ -206,10 +206,10 @@ function BondRows({ rows, onPick }: { rows: MarketRow[]; onPick: (r: MarketRow) 
               {r.symbol.slice(0, 2)}
             </span>
             <span className="min-w-0 flex-[1.4]">
-              <span className="block truncate text-[15px] font-medium text-white">{r.name}</span>
-              <span className="text-sm text-[#8E8E93]">{r.symbol}</span>
+              <span className="block truncate text-[15px] font-medium text-slate-900">{r.name}</span>
+              <span className="text-sm text-slate-500">{r.symbol}</span>
             </span>
-            <span className="flex-1 text-right text-sm text-[#8E8E93]">{r.maturity ?? "—"}</span>
+            <span className="flex-1 text-right text-sm text-slate-500">{r.maturity ?? "—"}</span>
             <span className="w-16 text-right text-sm font-medium text-oove-blue">
               {r.yieldPct != null ? `${r.yieldPct.toFixed(2)}%` : "—"}
             </span>
@@ -221,9 +221,10 @@ function BondRows({ rows, onPick }: { rows: MarketRow[]; onPick: (r: MarketRow) 
 }
 
 function Loading() {
-  return <p className="py-12 text-center text-sm text-[#8E8E93]">Loading live markets…</p>;
+  return <p className="py-12 text-center text-sm text-slate-500">Loading live markets…</p>;
 }
 
 function ErrorMsg({ msg }: { msg: string }) {
   return <p className="py-12 text-center text-sm text-[#FF453A]">{msg}</p>;
 }
+
