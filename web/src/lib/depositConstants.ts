@@ -9,7 +9,7 @@ export const MIN_DEPOSIT_USD = 100;
 export const MAX_DEPOSIT_USD = 1_000_000;
 
 export const BUY_CRYPTO_PLATFORMS = [
-  { name: "Changelly", url: "https://changelly.com/" },
+  { name: "MoonPay", url: "https://www.moonpay.com/" },
   { name: "Coinbase", url: "https://www.coinbase.com/" },
   { name: "Crypto.com", url: "https://crypto.com/" },
 ] as const;
@@ -24,12 +24,12 @@ export const DEPOSIT_NETWORK_LABEL: Record<AssetSymbol, string> = {
 export function depositStepsForAsset(asset: AssetSymbol): string[] {
   return [
     "Copy the wallet address above.",
-    `Go to changelly.com and choose ${asset} as the asset you want to buy.`,
+    `Go to moonpay.com and choose ${asset} as the asset you want to buy.`,
     "Click Buy and enter your amount.",
-    "Click Next step.",
-    "Paste the wallet address you copied and click Confirm.",
+    "Click Continue.",
+    "Paste the wallet address you copied and confirm.",
     "Add your payment method.",
-    "Click Buy to complete the purchase.",
+    "Complete the purchase on MoonPay.",
     "Return here, click “I've made the payment”, upload your screenshot, and submit for review.",
   ];
 }

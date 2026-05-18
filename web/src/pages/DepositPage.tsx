@@ -108,6 +108,10 @@ export function DepositPage() {
       setError(`Amount must be between $${minUsd.toLocaleString()} and $${maxUsd.toLocaleString()} USD.`);
       return;
     }
+    if (!proofFile) {
+      setError("Choose a payment screenshot file and upload it before submitting for review.");
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
@@ -275,7 +279,7 @@ export function DepositPage() {
                 </li>
               ))}
             </ul>
-            <h3 className="mt-6 text-sm font-semibold text-slate-900">How to buy and deposit (example: Changelly)</h3>
+            <h3 className="mt-6 text-sm font-semibold text-slate-900">How to buy and deposit (example: MoonPay)</h3>
             <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-700">
               {depositStepsForAsset(asset).map((step) => (
                 <li key={step}>{step}</li>
@@ -300,21 +304,26 @@ export function DepositPage() {
                 Declaring <span className="font-semibold tabular-nums">${declaredUsd}</span> USD · {asset}
               </p>
               <div>
-                <label className="text-sm font-medium text-slate-800">Payment screenshot</label>
+                <label className="text-sm font-medium text-slate-800">
+                  Payment screenshot <span className="text-red-600">*</span>
+                </label>
                 <input
                   type="file"
+                  required
                   accept="image/*,application/pdf"
                   className="mt-2 w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-semibold"
                   onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
                 />
                 <p className="mt-2 text-xs text-slate-500">
-                  Upload a screenshot of your payment confirmation, then submit for review.
+                  {proofFile
+                    ? `Selected: ${proofFile.name}. You can change the file before submitting.`
+                    : "Choose a file (image or PDF) — required before you can submit for review."}
                 </p>
               </div>
               {error ? <p className="text-sm text-red-600">{error}</p> : null}
               <button
                 type="submit"
-                disabled={submitting || !token}
+                disabled={submitting || !token || !proofFile}
                 className="w-full rounded-xl bg-oove-blue py-3 font-semibold text-white hover:brightness-105 disabled:opacity-50"
               >
                 {!token ? "Sign in to submit" : submitting ? "Submitting…" : "Submit for review"}
