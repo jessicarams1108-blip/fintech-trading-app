@@ -46,7 +46,7 @@ export function DepositUsdAmountPicker({
   const shell =
     variant === "panel"
       ? "rounded-xl bg-slate-50 p-4 dark:bg-oove-card-muted/80"
-      : "rounded-xl border border-slate-200 bg-white p-4 shadow-inner";
+      : "oove-card-lg shadow-inner";
 
   return (
     <div className={shell}>

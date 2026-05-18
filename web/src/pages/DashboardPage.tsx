@@ -114,22 +114,22 @@ export function DashboardPage() {
 
   const liquidityHero = (
     <div className="oove-card sm:p-6">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Oove liquidity</p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Supply, earn, and borrow</h1>
-      <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-base">
+      <p className="oove-label">Oove liquidity</p>
+      <h1 className="oove-page-title mt-2 text-2xl sm:text-3xl">Supply, earn, and borrow</h1>
+      <p className="mt-3 max-w-3xl text-sm leading-relaxed oove-body-muted sm:text-base">
         Oove is inspired by leading non-custodial liquidity markets like{" "}
-        <span className="font-medium text-slate-800">Aave</span>: deposit supported assets to earn yield, receive
+        <span className="font-medium">Aave</span>: deposit supported assets to earn yield, receive
         receipt-style balance growth (oTokens on the roadmap), and borrow against collateral with transparent rates and
-        risk controls. To <span className="font-medium text-slate-800">borrow</span>, you need a cumulative{" "}
-        <span className="font-medium text-slate-800">
+        risk controls. To <span className="font-medium">borrow</span>, you need a cumulative{" "}
+        <span className="font-medium">
           {summary ? formatMoney(summary.minSuppliedUsdToBorrow) : formatMoney(10_000)}
         </span>{" "}
         supplied (USD equivalent) and successful identity verification (under{" "}
         <Link className="font-semibold text-oove-blue underline" to="/settings">
           Settings → Account
         </Link>
-        ). Each <span className="font-medium text-slate-800">single deposit</span> you declare must be at least{" "}
-        <span className="font-medium text-slate-800">{formatMoney(100)}</span> USD equivalent — that minimum is separate from the{" "}
+        ). Each <span className="font-medium">single deposit</span> you declare must be at least{" "}
+        <span className="font-medium">{formatMoney(100)}</span> USD equivalent — that minimum is separate from the{" "}
         {formatMoney(10_000)} cumulative “integrity” bar to unlock borrowing.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
@@ -141,7 +141,7 @@ export function DashboardPage() {
         </Link>
         <Link
           to="/borrow"
-          className="inline-flex rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+          className="inline-flex rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-oove-border dark:bg-oove-panel dark:text-oove-ink dark:hover:bg-oove-card-muted"
         >
           Borrow
         </Link>
@@ -178,8 +178,8 @@ export function DashboardPage() {
                       {step.done ? "✓" : idx + 1}
                     </span>
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-900">{step.title}</p>
-                      {step.detail ? <p className="mt-1 text-sm text-slate-600">{step.detail}</p> : null}
+                      <p className="font-semibold">{step.title}</p>
+                      {step.detail ? <p className="mt-1 text-sm oove-body-muted">{step.detail}</p> : null}
                       {step.to && step.cta ? (
                         <Link
                           to={step.to}
@@ -300,7 +300,7 @@ export function DashboardPage() {
                     </td>
                     <td className="px-4 py-3 tabular-nums text-slate-700 sm:px-6">{display}</td>
                     <td className="px-4 py-3 font-medium text-emerald-700 sm:px-6">{m.supplyApy}</td>
-                    <td className="px-4 py-3 font-medium text-slate-800 sm:px-6">{m.borrowApr}</td>
+                    <td className="px-4 py-3 font-medium sm:px-6">{m.borrowApr}</td>
                     <td className="px-4 py-3 sm:px-6">
                       <div className="flex flex-wrap gap-2">
                         <Link

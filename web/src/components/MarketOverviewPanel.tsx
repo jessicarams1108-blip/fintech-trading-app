@@ -90,12 +90,13 @@ export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }
 
     const w = Math.max(el.clientWidth, 280);
     const h = chartHeight;
+    const isDark = document.documentElement.classList.contains("dark");
     const chart = createChart(el, {
       width: w,
       height: h,
       layout: {
-        background: { type: ColorType.Solid, color: "#ffffff" },
-        textColor: "#475569",
+        background: { type: ColorType.Solid, color: isDark ? "#102044" : "#ffffff" },
+        textColor: isDark ? "#cbd5e1" : "#475569",
         attributionLogo: false,
       },
       grid: {
@@ -138,7 +139,7 @@ export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }
   const d = q.data;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="oove-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-slate-900">Markets</h3>
@@ -181,23 +182,23 @@ export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }
           </div>
 
           <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-            <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <div className="oove-stat-tile">
               <dt className="text-xs font-medium text-slate-500">Market cap</dt>
               <dd className="mt-0.5 font-semibold tabular-nums text-slate-900">
                 {d.marketCapUsd != null ? formatMoneyCompact(d.marketCapUsd) : "—"}
               </dd>
             </div>
-            <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <div className="oove-stat-tile">
               <dt className="text-xs font-medium text-slate-500">Volume (24h)</dt>
               <dd className="mt-0.5 font-semibold tabular-nums text-slate-900">
                 {d.volume24hUsd != null ? formatMoneyCompact(d.volume24hUsd) : "—"}
               </dd>
             </div>
-            <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <div className="oove-stat-tile">
               <dt className="text-xs font-medium text-slate-500">Circulating supply</dt>
               <dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{fmtSupply(d.circulatingSupply, locale)}</dd>
             </div>
-            <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <div className="oove-stat-tile">
               <dt className="text-xs font-medium text-slate-500">Stats source</dt>
               <dd className="mt-0.5 font-semibold text-slate-900">
                 {d.statsSource === "coinmarketcap" ? "CoinMarketCap" : "CoinGecko"}
@@ -230,7 +231,7 @@ export function MarketOverviewPanel({ chartHeight = 280, initialSymbol = "BTC" }
           </div>
           <div
             ref={chartRef}
-            className="mt-3 w-full overflow-hidden rounded-xl border border-slate-100 bg-white"
+            className="mt-3 w-full overflow-hidden rounded-xl border border-slate-100 bg-white dark:border-oove-border/50 dark:bg-oove-panel"
             style={{ height: chartHeight }}
           />
           <p className="mt-2 text-[10px] text-slate-400">

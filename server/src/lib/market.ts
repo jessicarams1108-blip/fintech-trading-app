@@ -1,5 +1,3 @@
-import { getCmcSpotUsdPrices } from "./marketOverview.js";
-
 const CG_HEADERS = {
   Accept: "application/json",
   "User-Agent": "OovePortfolio/1.0 (https://theoove.com)",
@@ -53,6 +51,7 @@ export async function getUsdPrices(): Promise<Record<string, number>> {
   const live: Record<string, number> = {};
 
   try {
+    const { getCmcSpotUsdPrices } = await import("./marketOverview.js");
     Object.assign(live, await getCmcSpotUsdPrices(symbols));
   } catch {
     /* CMC optional */

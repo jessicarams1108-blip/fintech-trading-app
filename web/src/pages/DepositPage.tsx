@@ -162,16 +162,16 @@ export function DepositPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <p className="text-sm uppercase tracking-wide text-slate-500">Funding</p>
-        <h1 className="text-3xl font-semibold text-slate-900">Deposit crypto</h1>
-        <p className="mt-2 text-slate-600">
+        <p className="oove-label">Funding</p>
+        <h1 className="oove-page-title">Deposit crypto</h1>
+        <p className="mt-2 oove-body-muted">
           Choose an asset, enter how much you plan to send (${minUsd.toLocaleString()}–${maxUsd.toLocaleString()} USD), then
           send to your deposit wallet and submit proof for review.
         </p>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">1. Choose asset</h2>
+      <section className="oove-card-lg">
+        <h2 className="oove-section-title">1. Choose asset</h2>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {DEPOSIT_ASSETS.map((sym) => (
             <button
@@ -192,8 +192,8 @@ export function DepositPage() {
       </section>
 
       {flowStep !== "asset" ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">2. Deposit amount (USD)</h2>
+        <section className="oove-card-lg">
+          <h2 className="oove-section-title">2. Deposit amount (USD)</h2>
           <p className="mt-1 text-sm text-slate-600">
             Selected: <span className="font-semibold text-slate-900">{asset}</span>
             {config?.network ? (
@@ -229,8 +229,8 @@ export function DepositPage() {
 
       {(flowStep === "wallet" || flowStep === "proof") && (
         <>
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">3. Send {asset} to this wallet</h2>
+          <section className="oove-card-lg">
+            <h2 className="oove-section-title">3. Send {asset} to this wallet</h2>
             <p className="mt-1 text-sm text-slate-600">{config?.note}</p>
             <div className="mt-6 flex flex-col items-center gap-4">
               {address ? (
@@ -256,8 +256,8 @@ export function DepositPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Where to buy crypto</h2>
+          <section className="oove-card">
+            <h2 className="oove-section-title">Where to buy crypto</h2>
             <p className="mt-2 text-sm text-slate-600">
               You can purchase {asset} on any trusted exchange. These are popular options:
             </p>
@@ -294,8 +294,8 @@ export function DepositPage() {
           ) : null}
 
           {flowStep === "proof" ? (
-            <form className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" onSubmit={submitProof}>
-              <h2 className="text-lg font-semibold text-slate-900">4. Upload proof & submit</h2>
+            <form className="oove-card-lg space-y-4" onSubmit={submitProof}>
+              <h2 className="oove-section-title">4. Upload proof & submit</h2>
               <p className="text-sm text-slate-600">
                 Declaring <span className="font-semibold tabular-nums">${declaredUsd}</span> USD · {asset}
               </p>

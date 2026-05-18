@@ -5,31 +5,43 @@
 
 .dark {
   color-scheme: dark;
-
-  /* Surfaces */
-  --oove-page: 7 14 35;
-  --oove-panel: 12 24 52;
-  --oove-card: 16 32 68;
-  --oove-card-muted: 22 42 82;
-  --oove-border: 48 76 138;
   --oove-accent-glow: 42 91 219;
-
-  /* Text */
-  --oove-text: 248 250 252;
-  --oove-text-muted: 203 213 225;
-  --oove-text-subtle: 148 163 196;
-
-  --surface: 12 24 52;
-  --surface-muted: 22 42 82;
-}
-
-.dark body {
-  background-color: rgb(var(--oove-page));
-  color: rgb(var(--oove-text));
 }
 
 .dark :where(h1, h2, h3, h4, h5, h6):not(.ai-trading-light *) {
   color: rgb(var(--oove-text));
+}
+
+/* ——— Panel utilities (use CSS variables; not bg-white on element) ——— */
+.dark .oove-card,
+.dark .oove-card-lg {
+  background-color: rgb(var(--oove-card));
+  border-color: rgb(var(--oove-border) / 0.55);
+  color: rgb(var(--oove-text));
+}
+
+.dark .oove-stat-tile {
+  background-color: rgb(var(--oove-card-muted) / 0.85);
+  border-color: rgb(var(--oove-border) / 0.35);
+}
+
+.dark .oove-section-title,
+.dark .oove-page-title {
+  color: rgb(var(--oove-text));
+}
+
+.dark .oove-body-muted {
+  color: rgb(var(--oove-text-muted));
+}
+
+.dark .oove-label {
+  color: rgb(var(--oove-text-subtle));
+}
+
+.dark .oove-alert-locked {
+  border-color: rgb(245 158 11 / 0.35);
+  background-color: rgb(120 53 15 / 0.4);
+  color: rgb(254 243 199);
 }
 
 /* ——— Surfaces ——— */

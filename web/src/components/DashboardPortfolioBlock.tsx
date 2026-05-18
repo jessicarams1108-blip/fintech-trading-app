@@ -134,10 +134,10 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="oove-card">
       <div>
-        <h3 className="text-lg font-semibold text-slate-900">Deposit</h3>
-        <p className="mt-1 text-sm text-slate-600">
+        <h3 className="oove-section-title">Deposit</h3>
+        <p className="mt-1 text-sm oove-body-muted">
           Choose asset and declared USD, attach a proof file if you have one, then submit after you have sent funds.
           Confirmation usually arrives within a few minutes.
         </p>
@@ -195,7 +195,7 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
           spotError={priceQ.isError}
           variant="panel"
         />
-        <div className="rounded-xl bg-slate-50 p-4 dark:bg-oove-card-muted/80">
+        <div className="oove-stat-tile p-4">
           <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Proof file</label>
           <input
             type="file"
@@ -278,8 +278,8 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
 
   if (!token) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-slate-600">Sign in to see your portfolio, chart, and deposit form on the home page.</p>
+      <section className="oove-card-lg">
+        <p className="text-sm oove-body-muted">Sign in to see your portfolio, chart, and deposit form on the home page.</p>
       </section>
     );
   }
@@ -314,7 +314,7 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
         <div className="space-y-6 lg:col-span-2">
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="oove-card">
                 <div className="flex items-start gap-2">
                   <BalanceVisibilityEyeToggle className="mt-0.5" />
                   <div className="min-w-0 flex-1">
@@ -357,8 +357,8 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
                 </div>
               </Link>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 shadow-inner">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("portfolio.marketAssets")}</p>
+            <div className="oove-card">
+              <p className="oove-label">{t("portfolio.marketAssets")}</p>
               {topQ.isError ? (
                 <p className="mt-2 text-sm text-red-600">{(topQ.error as Error).message}</p>
               ) : (
@@ -366,7 +366,7 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
                   {(topQ.data ?? []).map((row) => (
                     <li
                       key={row.symbol}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-sm"
+                      className="oove-stat-tile rounded-full px-3 py-1.5 text-xs font-medium shadow-sm"
                     >
                       <span className="font-semibold">{row.symbol}</span>{" "}
                       <span className="tabular-nums text-slate-600">{formatPrice(row.priceUsd)}</span>
@@ -379,9 +379,9 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
 
           <MarketOverviewPanel chartHeight={260} />
 
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="oove-card overflow-hidden p-0">
             <div className="border-b border-slate-200 px-5 py-3">
-              <h3 className="text-lg font-semibold text-slate-900">Holdings (value)</h3>
+              <h3 className="oove-section-title">Holdings (value)</h3>
             </div>
             <div className="overflow-x-auto max-h-80 overflow-y-auto">
               <table className="min-w-full text-left text-sm">
