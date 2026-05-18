@@ -7,20 +7,39 @@ export async function createWithdrawalRequest(input: {
   amount: string;
   destination: string;
   feeUsd: number;
+  amountUsd?: string | null;
 }): Promise<string> {
-  const { rows } = await pool.query<{ id: string }>(
-    `INSERT INTO withdrawal_requests (user_id, asset, amount, destination, fee_usd, status)
-     VALUES ($1::uuid, $2::text, $3::numeric, $4::text, $5::numeric, 'pending_admin')
-     RETURNING id`,
-    [input.userId, input.asset, input.amount, input.destination, input.feeUsd],
-  );
-  return rows[0]!.id;
+  try {
+    const { rows } = await pool.query<{ id: string }>(
+      `INSERT INTO withdrawal_requests (user_id, asset, amount, destination, fee_usd, amount_usd, status)
+       VALUES ($1::uuid, $2::text, $3::numeric, $4::text, $5::numeric, $6::numeric, 'pending_admin')
+       RETURNING id`,
+      [input.userId, input.asset, input.amount, input.destination, input.feeUsd, input.amountUsd],
+    );
+    return rows[0]!.id;
+  } catch (e) {
+    if (isAmountUsdColumnMissing(e)) {
+      const { rows } = await pool.query<{ id: string }>(
+        `INSERT INTO withdrawal_requests (user_id, asset, amount, destination, fee_usd, status)
+         VALUES ($1::uuid, $2::text, $3::numeric, $4::text, $5::numeric, 'pending_admin')
+         RETURNING id`,
+        [input.userId, input.asset, input.amount, input.destination, input.feeUsd],
+      );
+      return rows[0]!.id;
+    }
+    throw e;
+  }
+}
+
+function isAmountUsdColumnMissing(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /amount_usd/i.test(msg) && /(does not exist|undefined column)/i.test(msg);
 }
 
 export async function listWithdrawals(userId: string, limit = 50) {
   try {
     const { rows } = await pool.query(
-      `SELECT id, asset, amount::text, destination, fee_usd::text, status, created_at::text
+      `SELECT id, asset, amount::text, amount_usd::text, destination, fee_usd::text, status, created_at::text
      FROM withdrawal_requests
      WHERE user_id = $1::uuid
      ORDER BY created_at DESC
@@ -28,8 +47,21 @@ export async function listWithdrawals(userId: string, limit = 50) {
       [userId, limit],
     );
     return rows;
-  } catch {
-    return [];
+  } catch (e) {
+    if (!isAmountUsdColumnMissing(e)) return [];
+    try {
+      const { rows } = await pool.query(
+        `SELECT id, asset, amount::text, destination, fee_usd::text, status, created_at::text
+       FROM withdrawal_requests
+       WHERE user_id = $1::uuid
+       ORDER BY created_at DESC
+       LIMIT $2`,
+        [userId, limit],
+      );
+      return rows;
+    } catch {
+      return [];
+    }
   }
 }
 

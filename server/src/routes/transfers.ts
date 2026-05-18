@@ -2,7 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { authenticateRequired } from "../middleware/auth.js";
-import { WALLET_ADDRESSES, type WalletAssetKey } from "../config.js";
+import { WALLET_ADDRESSES } from "../config.js";
+import { getUsdPrices } from "../lib/market.js";
 import { createWithdrawalRequest, listWithdrawals } from "../db/queries/transfers.js";
 import { insertTransferRequest, listTransferRequestsForUser } from "../db/queries/adminQueues.js";
 import { listUnifiedHistory } from "../db/queries/history.js";
@@ -31,11 +32,29 @@ transfersRouter.get("/deposit/address", limiter, (req, res) => {
   });
 });
 
-const withdrawSchema = z.object({
-  asset: z.string().min(2).max(12),
-  amount: z.coerce.number().positive(),
-  destination: z.string().min(8).max(200),
-});
+const withdrawSchema = z
+  .object({
+    asset: z.string().min(2).max(12),
+    amountUsd: z.coerce.number().positive().optional(),
+    amount: z.coerce.number().positive().optional(),
+    destination: z.string().min(8).max(200),
+  })
+  .refine((d) => d.amountUsd != null || d.amount != null, {
+    message: "amountUsd is required",
+    path: ["amountUsd"],
+  });
+
+async function usdToAssetAmount(assetRaw: string, amountUsd: number): Promise<{ ok: true; amount: string } | { ok: false; error: string }> {
+  const sym = assetRaw.trim().toUpperCase();
+  const prices = await getUsdPrices();
+  const spot = prices[sym];
+  if (spot === undefined || !Number.isFinite(spot) || spot <= 0) {
+    return { ok: false, error: `No USD price available for ${sym}` };
+  }
+  const units = amountUsd / spot;
+  const amount = units.toFixed(18).replace(/\.?0+$/, "");
+  return { ok: true, amount: amount === "" || amount === "-0" ? "0" : amount };
+}
 
 transfersRouter.post("/withdraw", limiter, async (req, res, next) => {
   const parsed = withdrawSchema.safeParse(req.body);
@@ -44,14 +63,29 @@ transfersRouter.post("/withdraw", limiter, async (req, res, next) => {
     return;
   }
   try {
+    const asset = parsed.data.asset.toUpperCase();
+    let amountStr: string;
+    let amountUsd: number | undefined;
+    if (parsed.data.amountUsd != null) {
+      amountUsd = parsed.data.amountUsd;
+      const conv = await usdToAssetAmount(asset, amountUsd);
+      if (!conv.ok) {
+        res.status(400).json({ error: conv.error });
+        return;
+      }
+      amountStr = conv.amount;
+    } else {
+      amountStr = String(parsed.data.amount);
+    }
     const id = await createWithdrawalRequest({
       userId: req.user!.id,
-      asset: parsed.data.asset.toUpperCase(),
-      amount: String(parsed.data.amount),
+      asset,
+      amount: amountStr,
       destination: parsed.data.destination,
       feeUsd: 0,
+      amountUsd: amountUsd != null ? String(amountUsd) : null,
     });
-    res.status(201).json({ data: { id, status: "pending_admin" } });
+    res.status(201).json({ data: { id, status: "pending_admin", amountUsd } });
   } catch (e) {
     next(e);
   }
@@ -107,7 +141,21 @@ transfersRouter.get("/history", limiter, async (req, res, next) => {
   try {
     const userId = req.user!.id;
     const [w, h] = await Promise.all([listWithdrawals(userId, 40), listUnifiedHistory(userId, { limit: 40, offset: 0 })]);
-    res.json({ data: { withdrawals: w, combined: h } });
+    const prices = await getUsdPrices();
+    const withdrawals = w.map((row) => {
+      const r = row as { asset: string; amount: string; amount_usd?: string | null };
+      const amountUsd =
+        r.amount_usd != null && r.amount_usd !== ""
+          ? r.amount_usd
+          : (() => {
+              const spot = prices[r.asset];
+              const units = Number.parseFloat(r.amount);
+              if (!Number.isFinite(spot) || spot <= 0 || !Number.isFinite(units)) return null;
+              return (units * spot).toFixed(2);
+            })();
+      return { ...row, amount_usd: amountUsd };
+    });
+    res.json({ data: { withdrawals, combined: h } });
   } catch (e) {
     next(e);
   }

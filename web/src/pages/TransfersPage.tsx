@@ -5,6 +5,16 @@ import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
 
+function formatTransferStatus(status: string): string {
+  return status.replace(/pending_admin/gi, "pending");
+}
+
+function formatUsdAmount(value: string | number | null | undefined): string {
+  const n = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""));
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+}
+
 async function authFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const res = await apiFetch(path, {
     ...init,
@@ -65,7 +75,7 @@ export function TransfersPage() {
       await authFetch("/api/transfers/withdraw", token, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ asset, amount: Number(wdAmount), destination: wdDest }),
+        body: JSON.stringify({ asset, amountUsd: Number(wdAmount), destination: wdDest }),
       });
     },
     onSuccess: () => {
@@ -165,6 +175,7 @@ export function TransfersPage() {
           }}
         >
           <h2 className="font-semibold text-slate-900">Request withdrawal</h2>
+          <label className="block text-sm font-medium text-slate-700">Asset to withdraw</label>
           <select className="w-full rounded-xl border px-3 py-2" value={asset} onChange={(e) => setAsset(e.target.value)}>
             {["BTC", "ETH", "USDT", "USDC", "DAI"].map((a) => (
               <option key={a} value={a}>
@@ -172,7 +183,16 @@ export function TransfersPage() {
               </option>
             ))}
           </select>
-          <input className="w-full rounded-xl border px-3 py-2" placeholder="Amount" value={wdAmount} onChange={(e) => setWdAmount(e.target.value)} />
+          <label className="block text-sm font-medium text-slate-700">Amount (USD)</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            className="w-full rounded-xl border px-3 py-2 tabular-nums"
+            placeholder="e.g. 500"
+            value={wdAmount}
+            onChange={(e) => setWdAmount(e.target.value)}
+          />
           <input className="w-full rounded-xl border px-3 py-2" placeholder="Destination address" value={wdDest} onChange={(e) => setWdDest(e.target.value)} />
           <p className="text-sm text-slate-500">Fee: $0 · ETA after approval: 1–24h</p>
           <button type="submit" disabled={wdMut.isPending} className="w-full rounded-xl bg-oove-blue py-2 font-semibold text-white disabled:opacity-50">
@@ -230,7 +250,8 @@ export function TransfersPage() {
           ) : (
             (transferReq.data ?? []).map((t) => (
               <li key={t.id}>
-                {t.asset} {t.amount} — <span className="font-medium">{t.status}</span> · {new Date(t.created_at).toLocaleString()}
+                {t.asset} {t.amount} — <span className="font-medium">{formatTransferStatus(t.status)}</span> ·{" "}
+                {new Date(t.created_at).toLocaleString()}
               </li>
             ))
           )}
@@ -240,9 +261,14 @@ export function TransfersPage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="font-semibold text-slate-900">Recent withdrawal requests</h2>
         <ul className="mt-3 space-y-2 text-sm text-slate-600">
-          {(hist.data?.data.withdrawals as { id: string; status: string; amount: string; asset: string }[] | undefined)?.map((w) => (
+          {(
+            hist.data?.data.withdrawals as
+              | { id: string; status: string; amount: string; asset: string; amount_usd?: string | null }[]
+              | undefined
+          )?.map((w) => (
             <li key={w.id}>
-              {w.asset} {w.amount} — <span className="font-medium">{w.status}</span>
+              {w.asset} {formatUsdAmount(w.amount_usd)} —{" "}
+              <span className="font-medium">{formatTransferStatus(w.status)}</span>
             </li>
           )) ?? <li>No withdrawals yet.</li>}
         </ul>

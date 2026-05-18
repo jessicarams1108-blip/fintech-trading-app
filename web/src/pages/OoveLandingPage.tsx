@@ -12,7 +12,7 @@ const faqs = [
   },
   {
     q: "Where are deposited funds held?",
-    a: "Funds are held with regulated custodial and banking partners where applicable, with segregation and reconciliation processes designed for operational safety. Replace with your legal wording before launch.",
+    a: "Funds are held with regulated custodial and banking partners where applicable, with segregation and reconciliation processes designed for operational safety.",
   },
   {
     q: "Does investing have risks?",
@@ -305,12 +305,6 @@ export function OoveLandingPage() {
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <PurpleBtn to="/onboarding">Open web app</PurpleBtn>
-            <Link
-              to="/deposit"
-              className="text-sm font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-oove-blue"
-            >
-              Learn more
-            </Link>
           </div>
         </div>
       </section>
@@ -328,22 +322,17 @@ export function OoveLandingPage() {
         </div>
       </section>
 
-      {/* Black — full power + dashboard */}
-      <section className="bg-black px-5 py-20 text-white lg:px-8 lg:py-28">
+      {/* Full power — white section (matches Build with Oove) */}
+      <section className="border-b border-slate-200 bg-white px-5 py-20 text-slate-900 lg:px-8 lg:py-28">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl lg:text-[2.75rem]">
             The full power of modern investing
           </h2>
-          <p className="mt-4 text-lg text-white/70">
+          <p className="mt-4 text-lg text-slate-600">
             Fast, flexible and secure. Built on Oove&apos;s core engine.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-6">
-            <Link
-              to="/onboarding"
-              className="inline-flex rounded-full bg-white px-7 py-3 text-sm font-semibold text-black transition hover:bg-slate-200"
-            >
-              Get started
-            </Link>
+            <PurpleBtn to="/onboarding">Get started</PurpleBtn>
           </div>
         </div>
 
@@ -400,7 +389,7 @@ export function OoveLandingPage() {
 
         <div className="mx-auto mt-20 max-w-3xl text-center">
           <h3 className="text-2xl font-semibold sm:text-3xl">Markets for every strategy.</h3>
-          <p className="mt-3 text-white/60">
+          <p className="mt-3 text-slate-600">
             From core liquidity to isolated risk—pick the market that matches how you earn and borrow.
           </p>
         </div>
@@ -421,11 +410,11 @@ export function OoveLandingPage() {
           ].map((c) => (
             <div
               key={c.title}
-              className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 text-left transition hover:border-white/20"
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              <p className="text-xs font-semibold uppercase tracking-wider text-oove-green">Oove</p>
-              <p className="mt-2 text-lg font-semibold">{c.title}</p>
-              <p className="mt-2 text-sm leading-relaxed text-white/65">{c.body}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-oove-blue">Oove</p>
+              <p className="mt-2 text-lg font-semibold text-slate-900">{c.title}</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{c.body}</p>
             </div>
           ))}
         </div>
@@ -441,12 +430,6 @@ export function OoveLandingPage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <PurpleBtn to="/onboarding">Start building</PurpleBtn>
-              <a
-                href="mailto:sales@oove.com"
-                className="inline-flex items-center justify-center rounded-full border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-              >
-                Talk to sales
-              </a>
             </div>
           </div>
           <div className="relative flex h-72 items-center justify-center lg:h-96">
