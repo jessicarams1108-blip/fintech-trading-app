@@ -14,6 +14,7 @@ import {
   MIN_DEPOSIT_USD,
   depositStepsForAsset,
 } from "@/lib/depositConstants";
+import { marketSpotPriceQueryOptions } from "@/lib/marketSpotPrice";
 import { uploadDepositProofIfConfigured } from "@/lib/depositProofUpload";
 import { useAuth } from "@/state/AuthContext";
 import { DepositUsdAmountPicker } from "@/components/DepositUsdAmountPicker";
@@ -61,17 +62,8 @@ export function DepositPage() {
   }, [asset, flowStep]);
 
   const priceQ = useQuery({
-    queryKey: ["market", "price", asset],
+    ...marketSpotPriceQueryOptions(asset),
     enabled: flowStep !== "asset",
-    queryFn: async () => {
-      const res = await apiFetch(`/api/market/price?symbol=${encodeURIComponent(asset)}`);
-      const body = (await res.json().catch(() => ({}))) as { data?: { priceUsd?: number }; error?: string };
-      if (!res.ok) throw new Error(body.error ?? "Price unavailable");
-      const px = body.data?.priceUsd;
-      if (typeof px !== "number" || !Number.isFinite(px) || px <= 0) throw new Error("Price unavailable");
-      return px;
-    },
-    staleTime: 20_000,
   });
 
   const minUsd = Math.max(config?.minDeclaredUsd ?? MIN_DEPOSIT_USD, MIN_DEPOSIT_USD);

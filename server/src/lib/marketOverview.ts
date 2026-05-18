@@ -33,7 +33,7 @@ type CmcUsdQuote = {
   last_updated: string;
 };
 
-async function fetchCmcQuotesLatest(symbols: string[]): Promise<Record<string, CmcUsdQuote> | null> {
+export async function fetchCmcQuotesLatest(symbols: string[]): Promise<Record<string, CmcUsdQuote> | null> {
   const apiKey = env.COINMARKETCAP_API_KEY;
   if (!apiKey || symbols.length === 0) return null;
 
@@ -201,6 +201,32 @@ async function fetchCoinGeckoMarketChart(
 
 export function isAllowedOverviewSymbol(symbol: string): boolean {
   return ALLOWED_SYMBOLS.has(symbol.trim().toUpperCase());
+}
+
+/** Live spot USD — same sources as home market overview (CMC, then CoinGecko detail). */
+export async function resolveSpotUsdPrice(symbol: string): Promise<number> {
+  const sym = symbol.trim().toUpperCase();
+  if (!ALLOWED_SYMBOLS.has(sym)) return 0;
+  const cgId = COINGECKO_IDS[sym as keyof typeof COINGECKO_IDS];
+  if (!cgId) return 0;
+
+  const [cmcMap, cgDetail] = await Promise.all([
+    fetchCmcQuotesLatest([sym]),
+    fetchCoinGeckoCoinDetail(cgId),
+  ]);
+  const px = cmcMap?.[sym]?.price ?? cgDetail?.price ?? 0;
+  if (typeof px !== "number" || !Number.isFinite(px) || px <= 0) return 0;
+  return Math.round(px * 10_000) / 10_000;
+}
+
+export async function getCmcSpotUsdPrices(symbols: string[]): Promise<Record<string, number>> {
+  const map = await fetchCmcQuotesLatest(symbols);
+  if (!map) return {};
+  const out: Record<string, number> = {};
+  for (const [sym, q] of Object.entries(map)) {
+    if (q.price > 0) out[sym] = Math.round(q.price * 10_000) / 10_000;
+  }
+  return out;
 }
 
 export function parseOverviewRange(raw: string | undefined): AssetOverviewRange {

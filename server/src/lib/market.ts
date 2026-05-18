@@ -1,4 +1,11 @@
-/** USD reference prices (fallback). Merged with live CoinGecko when fetch succeeds. */
+import { getCmcSpotUsdPrices } from "./marketOverview.js";
+
+const CG_HEADERS = {
+  Accept: "application/json",
+  "User-Agent": "OovePortfolio/1.0 (https://theoove.com)",
+} as const;
+
+/** USD reference prices (fallback only when live feeds are unavailable). */
 export const STATIC_USD: Record<string, number> = {
   USD: 1,
   USDT: 1,
@@ -42,29 +49,46 @@ export async function getUsdPrices(): Promise<Record<string, number>> {
     return { ...STATIC_USD, ...cache.prices };
   }
 
-  const ids = [...new Set(Object.values(COINGECKO_IDS))].join(",");
+  const symbols = Object.keys(COINGECKO_IDS);
+  const live: Record<string, number> = {};
+
   try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 4500);
-    const res = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
-      { signal: ctrl.signal },
-    );
-    clearTimeout(t);
-    if (!res.ok) throw new Error(String(res.status));
-    const body = (await res.json()) as Record<string, { usd?: number }>;
-    const live: Record<string, number> = {};
-    for (const [sym, id] of Object.entries(COINGECKO_IDS)) {
-      const px = body[id]?.usd;
-      if (typeof px === "number" && Number.isFinite(px)) {
-        live[sym] = Math.round(px * 10_000) / 10_000;
+    Object.assign(live, await getCmcSpotUsdPrices(symbols));
+  } catch {
+    /* CMC optional */
+  }
+
+  const missing = symbols.filter((sym) => !(sym in live));
+  if (missing.length > 0) {
+    const ids = [...new Set(missing.map((sym) => COINGECKO_IDS[sym as keyof typeof COINGECKO_IDS]))].join(",");
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 8000);
+      const res = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
+        { signal: ctrl.signal, headers: CG_HEADERS },
+      );
+      clearTimeout(t);
+      if (!res.ok) throw new Error(String(res.status));
+      const body = (await res.json()) as Record<string, { usd?: number }>;
+      for (const sym of missing) {
+        const id = COINGECKO_IDS[sym as keyof typeof COINGECKO_IDS];
+        const px = body[id]?.usd;
+        if (typeof px === "number" && Number.isFinite(px) && px > 0) {
+          live[sym] = Math.round(px * 10_000) / 10_000;
+        }
       }
+    } catch {
+      /* batch CoinGecko failed — keep CMC partial results */
     }
+  }
+
+  if (Object.keys(live).length > 0) {
     cache = { at: now, prices: live };
     return { ...STATIC_USD, ...live };
-  } catch {
-    return { ...STATIC_USD };
   }
+
+  return { ...STATIC_USD };
 }
 
 export function borrowAprFor(asset: string): { variable: number; stable: number } {

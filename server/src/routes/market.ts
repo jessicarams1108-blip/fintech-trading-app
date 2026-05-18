@@ -4,6 +4,7 @@ import {
   getAssetMarketOverview,
   isAllowedOverviewSymbol,
   parseOverviewRange,
+  resolveSpotUsdPrice,
 } from "../lib/marketOverview.js";
 import { resolveEquityQuotes } from "../lib/equityQuotes.js";
 
@@ -66,8 +67,11 @@ marketRouter.get("/price", async (req, res, next) => {
     return;
   }
   try {
-    const px = await getUsdPrices();
-    const priceUsd = px[raw];
+    let priceUsd = isAllowedOverviewSymbol(raw) ? await resolveSpotUsdPrice(raw) : 0;
+    if (!(priceUsd > 0)) {
+      const px = await getUsdPrices();
+      priceUsd = px[raw] ?? 0;
+    }
     if (typeof priceUsd !== "number" || !Number.isFinite(priceUsd) || priceUsd <= 0) {
       res.status(404).json({ error: `No USD price available for ${raw}` });
       return;

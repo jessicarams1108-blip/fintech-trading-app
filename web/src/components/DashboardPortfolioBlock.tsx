@@ -11,6 +11,7 @@ import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeTog
 import { MarketOverviewPanel } from "@/components/MarketOverviewPanel";
 import { DepositUsdAmountPicker } from "@/components/DepositUsdAmountPicker";
 import { apiFetch } from "@/lib/apiBase";
+import { marketSpotPriceQueryOptions } from "@/lib/marketSpotPrice";
 import { fetchFixedSavingsSummary } from "@/lib/fixedSavingsApi";
 import { usePreferences } from "@/state/PreferencesContext";
 
@@ -66,19 +67,7 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
   const [awaitingId, setAwaitingId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
 
-  const priceQ = useQuery({
-    queryKey: ["market", "price", asset],
-    queryFn: async () => {
-      const res = await apiFetch(`/api/market/price?symbol=${encodeURIComponent(asset)}`);
-      const body = (await res.json().catch(() => ({}))) as { data?: { priceUsd?: number }; error?: string };
-      if (!res.ok) throw new Error(body.error ?? "Price unavailable");
-      const px = body.data?.priceUsd;
-      if (typeof px !== "number" || !Number.isFinite(px) || px <= 0) throw new Error("Price unavailable");
-      return px;
-    },
-    staleTime: 20_000,
-    refetchInterval: 35_000,
-  });
+  const priceQ = useQuery(marketSpotPriceQueryOptions(asset));
 
   useEffect(() => {
     if (!awaitingId) {
