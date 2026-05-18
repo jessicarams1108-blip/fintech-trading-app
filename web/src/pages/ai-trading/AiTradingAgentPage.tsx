@@ -1,19 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import clsx from "clsx";
 import { useAuth } from "@/state/AuthContext";
 import { fetchAiBalance, fetchAiHistory, startAiTrade } from "@/lib/aiTradingApi";
 import { AiTradingPageLayout } from "@/components/ai-trading/AiTradingPageLayout";
-import { AiTradingDisclaimer } from "@/components/ai-trading/AiTradingDisclaimer";
-
-const ASSET_CLASSES = [
-  { id: "crypto", label: "Crypto" },
-  { id: "forex", label: "Forex" },
-  { id: "stocks", label: "Stocks" },
-] as const;
-
-const QUICK_PICKS = ["BTC", "ETH", "SOL", "AAPL", "TSLA", "EUR/USD"];
+import { AiTradeSymbolSelect } from "@/components/ai-trading/AiTradeSymbolSelect";
+import { resolveSymbolForAssetClass } from "@/lib/aiTradeSymbols";
 
 export function AiTradingAgentPage() {
   const { token } = useAuth();
@@ -70,7 +62,7 @@ export function AiTradingAgentPage() {
     setLoading(true);
     try {
       const trade = await startAiTrade(token!, {
-        asset: asset.trim().toUpperCase(),
+        asset: resolveSymbolForAssetClass(assetClass, asset),
         amount: num,
         asset_class: assetClass,
       });
@@ -102,46 +94,14 @@ export function AiTradingAgentPage() {
         ) : null}
 
         <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 space-y-4">
-          <div>
-            <label className="mb-2 block text-xs font-medium text-slate-500">Market type</label>
-            <div className="flex gap-2">
-              {ASSET_CLASSES.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setAssetClass(c.id)}
-                  className={clsx(
-                    "flex-1 rounded-xl py-2.5 text-sm font-semibold",
-                    assetClass === c.id ? "bg-oove-blue text-white" : "bg-slate-100 text-slate-600",
-                  )}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-xs font-medium text-slate-500">Symbol</label>
-            <input
-              value={asset}
-              onChange={(e) => setAsset(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-oove-blue"
-              placeholder="e.g. BTC, AAPL"
-            />
-            <div className="mt-2 flex flex-wrap gap-2">
-              {QUICK_PICKS.map((sym) => (
-                <button
-                  key={sym}
-                  type="button"
-                  onClick={() => setAsset(sym)}
-                  className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs text-slate-500 hover:text-slate-900"
-                >
-                  {sym}
-                </button>
-              ))}
-            </div>
-          </div>
+          <AiTradeSymbolSelect
+            assetClass={assetClass}
+            symbol={asset}
+            onAssetClassChange={setAssetClass}
+            onSymbolChange={setAsset}
+            assetTypeLabel="Market type"
+            symbolSelectId="ai-agent-trade-symbol"
+          />
 
           <div>
             <label className="mb-2 block text-xs font-medium text-slate-500">
@@ -176,10 +136,6 @@ export function AiTradingAgentPage() {
         >
           Browse all markets
         </Link>
-
-        <div className="mt-8">
-          <AiTradingDisclaimer />
-        </div>
       </div>
     </AiTradingPageLayout>
   );

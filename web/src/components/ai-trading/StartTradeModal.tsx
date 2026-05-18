@@ -1,13 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import clsx from "clsx";
 import { ai } from "@/lib/aiTradingTheme";
-
-const ASSET_CLASSES = [
-  { id: "crypto", label: "Crypto" },
-  { id: "forex", label: "Forex" },
-  { id: "stocks", label: "Stocks" },
-] as const;
+import { AiTradeSymbolSelect } from "@/components/ai-trading/AiTradeSymbolSelect";
+import { resolveAssetClassAndSymbol } from "@/lib/aiTradeSymbols";
 
 type Props = {
   open: boolean;
@@ -32,11 +27,21 @@ export function StartTradeModal({
   defaultClass = "crypto",
   onSubmit,
 }: Props) {
-  const [assetClass, setAssetClass] = useState(defaultClass);
-  const [asset, setAsset] = useState(defaultAsset);
+  const initial = resolveAssetClassAndSymbol(defaultClass, defaultAsset);
+  const [assetClass, setAssetClass] = useState<string>(initial.assetClass);
+  const [asset, setAsset] = useState(initial.symbol);
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const next = resolveAssetClassAndSymbol(defaultClass, defaultAsset);
+    setAssetClass(next.assetClass);
+    setAsset(next.symbol);
+    setAmount("");
+    setError(null);
+  }, [open, defaultAsset, defaultClass]);
 
   if (!open) return null;
 
@@ -62,7 +67,8 @@ export function StartTradeModal({
     }
     setLoading(true);
     try {
-      await onSubmit({ asset: asset.trim().toUpperCase(), amount: num, asset_class: assetClass });
+      const resolved = resolveAssetClassAndSymbol(assetClass, asset);
+      await onSubmit({ asset: resolved.symbol, amount: num, asset_class: resolved.assetClass });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start trade");
@@ -82,35 +88,13 @@ export function StartTradeModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Asset type</label>
-            <div className="flex gap-2">
-              {ASSET_CLASSES.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setAssetClass(c.id)}
-                  className={clsx(
-                    "flex-1 rounded-xl py-2 text-sm font-semibold",
-                    assetClass === c.id ? "text-white" : "bg-slate-100 text-slate-600",
-                  )}
-                  style={assetClass === c.id ? { backgroundColor: ai.blue } : undefined}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Symbol</label>
-            <input
-              value={asset}
-              onChange={(e) => setAsset(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-oove-blue"
-              placeholder="e.g. BTC, AAPL, EUR/USD"
-            />
-          </div>
+          <AiTradeSymbolSelect
+            assetClass={assetClass}
+            symbol={asset}
+            onAssetClassChange={setAssetClass}
+            onSymbolChange={setAsset}
+            symbolSelectId="ai-start-trade-symbol"
+          />
 
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-500">
@@ -146,4 +130,3 @@ export function StartTradeModal({
     </div>
   );
 }
-

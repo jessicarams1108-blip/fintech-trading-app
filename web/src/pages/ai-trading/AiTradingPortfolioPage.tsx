@@ -10,7 +10,6 @@ import { AiTradingPageLayout } from "@/components/ai-trading/AiTradingPageLayout
 import { AiTradingUnderlineTabs } from "@/components/ai-trading/AiTradingUnderlineTabs";
 import { FakeLiveChart } from "@/components/ai-trading/FakeLiveChart";
 import { FundAiWalletModal } from "@/components/ai-trading/FundAiWalletModal";
-import { AiTradingDisclaimer } from "@/components/ai-trading/AiTradingDisclaimer";
 import { ai } from "@/lib/aiTradingTheme";
 
 const PORTFOLIO_TABS = ["Return", "Income", "Account value", "Allocation"] as const;
@@ -56,7 +55,7 @@ export function AiTradingPortfolioPage() {
   const balance = bal?.balance ?? 0;
 
   return (
-    <AiTradingPageLayout description="Simulated trading for education. Fund your AI wallet from CashBox, then trade with the agent.">
+    <AiTradingPageLayout>
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-sm font-medium text-slate-500">AI wallet balance</p>
         <p className="mt-1 text-4xl font-semibold tracking-tight text-slate-900 tabular-nums">
@@ -189,8 +188,6 @@ export function AiTradingPortfolioPage() {
           )}
         </div>
       </section>
-
-      <AiTradingDisclaimer />
     </AiTradingPageLayout>
   );
 }
