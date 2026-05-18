@@ -95,10 +95,10 @@ const NETWORK_LABELS: Record<DepositAssetKey, string> = {
 };
 
 const depositNotice: Record<DepositAssetKey, string> = {
-  BTC: "Only send BTC to this address. Wrong asset or network may be lost.",
-  ETH: "Only send ETH to this address (placeholder wallet — update in server config when ready).",
-  USDT: "Only send USDT to this address (placeholder wallet — update in server config when ready).",
-  SOL: "Only send SOL to this address (placeholder wallet — update in server config when ready).",
+  BTC: "Only send BTC to this Bitcoin address. Other assets sent here may be lost.",
+  ETH: "Only send ETH to this Ethereum address.",
+  USDT: "Only send USDT on Ethereum (ERC-20) to this address. Do not send other tokens.",
+  SOL: "Only send SOL to this Solana address.",
 };
 
 export function createPublicDepositRoutes() {

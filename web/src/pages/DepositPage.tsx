@@ -12,6 +12,7 @@ import {
   DEPOSIT_ASSETS,
   MAX_DEPOSIT_USD,
   MIN_DEPOSIT_USD,
+  depositQrPayload,
   depositStepsForAsset,
 } from "@/lib/depositConstants";
 import { marketSpotPriceQueryOptions } from "@/lib/marketSpotPrice";
@@ -240,7 +241,14 @@ export function DepositPage() {
               {address ? (
                 <>
                   <div className="keep-light rounded-2xl border border-slate-200 bg-white p-4">
-                    <QRCodeSVG value={address} size={200} bgColor="#ffffff" fgColor="#0f172a" />
+                    <QRCodeSVG
+                      value={depositQrPayload(asset, address)}
+                      size={220}
+                      level="M"
+                      includeMargin
+                      bgColor="#ffffff"
+                      fgColor="#0f172a"
+                    />
                   </div>
                   <div className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm break-all text-slate-900">
                     {address}

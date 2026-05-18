@@ -1,7 +1,8 @@
 import type { AssetSymbol } from "@/types";
 import {
   DEPOSIT_NETWORK_LABEL,
-  DEPOSIT_TREASURY_BTC_ADDRESS,
+  DEPOSIT_WALLET_NOTE,
+  depositWalletAddress,
   MAX_DEPOSIT_USD,
   MIN_DEPOSIT_USD,
 } from "@/lib/depositConstants";
@@ -14,12 +15,10 @@ export function offlineDepositConfig(asset: AssetSymbol): {
   minDeclaredUsd: number;
   maxDeclaredUsd: number;
 } {
-  const common =
-    "Offline preview — start the backend (npm run dev:server) to load live config from the server.";
   return {
-    address: DEPOSIT_TREASURY_BTC_ADDRESS,
+    address: depositWalletAddress(asset),
     network: DEPOSIT_NETWORK_LABEL[asset] ?? asset,
-    note: `Send only ${asset} to this address. Placeholder wallet in use for all assets until updated. ${common}`,
+    note: DEPOSIT_WALLET_NOTE[asset],
     minDeclaredUsd: MIN_DEPOSIT_USD,
     maxDeclaredUsd: MAX_DEPOSIT_USD,
   };
