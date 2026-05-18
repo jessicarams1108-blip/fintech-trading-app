@@ -5,6 +5,9 @@ const USD_PER_UNIT: Record<string, number> = STATIC_USD;
 /** Minimum USD equivalent for any single accepted deposit (user declaration + admin credit). */
 export const MIN_DEPOSIT_USD = 100;
 
+/** Maximum USD equivalent per deposit declaration. */
+export const MAX_DEPOSIT_USD = 1_000_000;
+
 export function assetAmountToUsd(asset: string, amount: string | number): number {
   const px = USD_PER_UNIT[asset.toUpperCase()] ?? 0;
   const n = typeof amount === "number" ? amount : Number.parseFloat(String(amount));

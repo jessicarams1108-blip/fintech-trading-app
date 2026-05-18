@@ -4,6 +4,7 @@ const PRESETS = [100, 250, 500, 1000, 2500] as const;
 
 type Props = {
   minUsd: number;
+  maxUsd?: number;
   value: string;
   onChange: (next: string) => void;
   /** Asset whose USD spot price is used for crypto estimate */
@@ -16,6 +17,7 @@ type Props = {
 
 export function DepositUsdAmountPicker({
   minUsd,
+  maxUsd,
   value,
   onChange,
   assetSymbol,
@@ -24,7 +26,10 @@ export function DepositUsdAmountPicker({
 }: Props) {
   const { formatMoney, formatPrice } = usePreferences();
   const amountNum = Number.parseFloat(value);
-  const ok = Number.isFinite(amountNum) && amountNum >= minUsd;
+  const ok =
+    Number.isFinite(amountNum) &&
+    amountNum >= minUsd &&
+    (maxUsd == null || amountNum <= maxUsd);
   const estQty =
     ok && spotUsdPerUnit != null && spotUsdPerUnit > 0 ? amountNum / spotUsdPerUnit : null;
 
@@ -39,7 +44,11 @@ export function DepositUsdAmountPicker({
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-inner">
       <label className="text-sm font-medium text-slate-800">Amount to deposit (USD equivalent)</label>
       <p className="mt-1 text-xs text-slate-500">
-        Choose how much you intend to send (minimum {formatMoney(minUsd)}). You’ll declare the same amount when you submit proof.
+        Choose how much you intend to send (
+        {maxUsd != null
+          ? `${formatMoney(minUsd)} – ${formatMoney(maxUsd)}`
+          : `minimum ${formatMoney(minUsd)}`}
+        ). You’ll declare the same amount when you submit proof.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {PRESETS.map((p) => (

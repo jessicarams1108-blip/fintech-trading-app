@@ -1,4 +1,4 @@
-export type AssetSymbol = "BTC" | "ETH" | "USDT";
+export type AssetSymbol = "BTC" | "ETH" | "USDT" | "SOL";
 
 export type DepositStatus =
   | "awaiting_payment"

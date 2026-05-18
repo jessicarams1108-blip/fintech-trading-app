@@ -1,6 +1,6 @@
 export type DepositStatus = "awaiting_payment" | "pending_review" | "confirmed" | "rejected";
 
-export type DepositAsset = "BTC" | "ETH" | "USDT";
+export type DepositAsset = "BTC" | "ETH" | "USDT" | "SOL";
 
 export type PendingDepositDto = {
   id: string;

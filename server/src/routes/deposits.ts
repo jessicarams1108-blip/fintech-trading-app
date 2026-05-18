@@ -11,9 +11,9 @@ import {
   rejectDeposit,
   type DepositAsset,
 } from "../db/queries/deposits.js";
-import { WALLET_ADDRESSES, type WalletAssetKey } from "../config.js";
+import { WALLET_ADDRESSES, isDepositAssetKey, type DepositAssetKey } from "../config.js";
 import { authenticateRequired, requireAdmin } from "../middleware/auth.js";
-import { MIN_DEPOSIT_USD, assetAmountToUsd } from "../lib/assetUsd.js";
+import { MIN_DEPOSIT_USD, MAX_DEPOSIT_USD, assetAmountToUsd } from "../lib/assetUsd.js";
 import { findUserById } from "../db/queries/users.js";
 import { sendDepositConfirmedEmail } from "../lib/mail.js";
 import { env } from "../env.js";
@@ -26,7 +26,7 @@ const btcHash = /^[a-fA-F0-9]{64}$/;
 const evmTx = /^0x[a-fA-F0-9]{64}$/;
 
 const submitSchema = z.object({
-  asset: z.enum(["BTC", "ETH", "USDT"]),
+  asset: z.enum(["BTC", "ETH", "USDT", "SOL"]),
   /** Optional; omitted or empty uses a server-generated placeholder (ops reconciles via proof). */
   txHash: z.string().max(120).optional(),
   screenshotFileName: z.string().max(260).nullable().optional(),
@@ -34,8 +34,8 @@ const submitSchema = z.object({
   depositProofKey: z.string().min(30).max(500).optional(),
   declaredAmountUsd: z.coerce
     .number()
-    .refine((n) => Number.isFinite(n) && n >= MIN_DEPOSIT_USD, {
-      message: `Each deposit must declare at least $${MIN_DEPOSIT_USD} USD equivalent.`,
+    .refine((n) => Number.isFinite(n) && n >= MIN_DEPOSIT_USD && n <= MAX_DEPOSIT_USD, {
+      message: `Deposit amount must be between $${MIN_DEPOSIT_USD.toLocaleString()} and $${MAX_DEPOSIT_USD.toLocaleString()} USD.`,
     }),
 });
 
@@ -74,8 +74,9 @@ function resolveProofImageUrl(userId: string, parsed: z.infer<typeof submitSchem
 function validateTxHash(asset: DepositAsset, hash: string) {
   const trimmed = hash.trim();
   if (asset === "BTC" && btcHash.test(trimmed)) return trimmed;
-  if ((asset === "ETH" || asset === "USDT") && evmTx.test(trimmed)) return trimmed;
+  if ((asset === "ETH" || asset === "USDT" || asset === "SOL") && evmTx.test(trimmed)) return trimmed;
   if (asset === "USDT" && /^[a-fA-F0-9]{64}$/.test(trimmed)) return trimmed;
+  if (asset === "SOL" && /^[1-9A-HJ-NP-Za-km-z]{80,90}$/.test(trimmed)) return trimmed;
   throw new Error("Malformed transaction identifier for asset");
 }
 
@@ -86,16 +87,18 @@ function generatedPendingTxHash(asset: DepositAsset): string {
   return `0x${hex}`;
 }
 
-const NETWORK_LABELS: Record<WalletAssetKey, string> = {
+const NETWORK_LABELS: Record<DepositAssetKey, string> = {
   BTC: "Bitcoin",
   ETH: "Ethereum",
   USDT: "Ethereum (ERC-20)",
+  SOL: "Solana",
 };
 
-const depositNotice: Record<WalletAssetKey, string> = {
-  BTC: "Only send BTC to this address. Do not send other assets.",
-  ETH: "Only send ETH on the configured Ethereum network.",
-  USDT: "Only send supported USDT on the configured Ethereum network.",
+const depositNotice: Record<DepositAssetKey, string> = {
+  BTC: "Only send BTC to this address. Wrong asset or network may be lost.",
+  ETH: "Only send ETH to this address (placeholder wallet — update in server config when ready).",
+  USDT: "Only send USDT to this address (placeholder wallet — update in server config when ready).",
+  SOL: "Only send SOL to this address (placeholder wallet — update in server config when ready).",
 };
 
 export function createPublicDepositRoutes() {
@@ -107,12 +110,11 @@ export function createPublicDepositRoutes() {
 
   router.get("/config", (req, res) => {
     const raw = typeof req.query.asset === "string" ? req.query.asset.toUpperCase() : "";
-    if (!["BTC", "ETH", "USDT"].includes(raw)) {
+    if (!isDepositAssetKey(raw)) {
       return res.status(400).json({ error: "Unsupported asset" });
     }
 
-    const asset = raw as WalletAssetKey;
-
+    const asset = raw;
     const address = WALLET_ADDRESSES[asset];
     const networkLabel = NETWORK_LABELS[asset];
     const note = depositNotice[asset];
@@ -123,6 +125,7 @@ export function createPublicDepositRoutes() {
       network: networkLabel,
       note,
       minDeclaredUsd: MIN_DEPOSIT_USD,
+      maxDeclaredUsd: MAX_DEPOSIT_USD,
     });
   });
 

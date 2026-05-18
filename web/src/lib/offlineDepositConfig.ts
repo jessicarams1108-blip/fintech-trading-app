@@ -1,31 +1,26 @@
 import type { AssetSymbol } from "@/types";
+import {
+  DEPOSIT_NETWORK_LABEL,
+  DEPOSIT_TREASURY_BTC_ADDRESS,
+  MAX_DEPOSIT_USD,
+  MIN_DEPOSIT_USD,
+} from "@/lib/depositConstants";
 
 /** Shown when the API is offline so the deposit UI still works for layout / QR preview. */
 export function offlineDepositConfig(asset: AssetSymbol): {
   address: string;
   network: string;
   note: string;
+  minDeclaredUsd: number;
+  maxDeclaredUsd: number;
 } {
   const common =
     "Offline preview — start the backend (npm run dev:server) to load live config from the server.";
-  switch (asset) {
-    case "BTC":
-      return {
-        address: "1AKtbnngZEL8UcvW81XQKPb6B9cWskP6ne",
-        network: "Bitcoin",
-        note: "Only send BTC to this address. Do not send other assets. " + common,
-      };
-    case "ETH":
-      return {
-        address: "0x000000000000000000000000000000000000dEaD",
-        network: "Ethereum",
-        note: "Preview address for layout only. " + common,
-      };
-    case "USDT":
-      return {
-        address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        network: "Ethereum (ERC-20)",
-        note: "Preview address for layout only. " + common,
-      };
-  }
+  return {
+    address: DEPOSIT_TREASURY_BTC_ADDRESS,
+    network: DEPOSIT_NETWORK_LABEL[asset] ?? asset,
+    note: `Send only ${asset} to this address. Placeholder wallet in use for all assets until updated. ${common}`,
+    minDeclaredUsd: MIN_DEPOSIT_USD,
+    maxDeclaredUsd: MAX_DEPOSIT_USD,
+  };
 }
