@@ -327,7 +327,6 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
                 </p>
                 <p className="mt-1 text-lg font-medium tabular-nums text-slate-700">
                   <MaskedValue>{formatUsdtEquivalent(total)}</MaskedValue>
-                  <span className="ml-1 text-xs font-normal font-sans text-slate-500">{t("portfolio.usdtEquiv")}</span>
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   {t("portfolio.yieldAccrual", { apy: yieldApyPct.toFixed(2), days: String(yieldAccrualDays) })}
