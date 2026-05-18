@@ -58,7 +58,11 @@ export function HistoryPage() {
           r.amount ?? "",
           r.direction ?? "",
           r.status.replace(/pending_admin/gi, "pending"),
-          (r.detail ?? "").replace(/,/g, ";").replace(/\badmin\b/gi, "").trim(),
+          (r.detail ?? "")
+            .replace(/admin_balance_adjust/gi, "balance adjust")
+            .replace(/,/g, ";")
+            .replace(/\badmin\b/gi, "")
+            .trim(),
         ].join(","),
       ),
     );

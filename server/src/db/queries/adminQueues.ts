@@ -369,7 +369,7 @@ export async function adminAdjustWalletBalance(input: {
     const ledgerAmt = appliedStr.startsWith("-") ? appliedStr.slice(1) : appliedStr;
     await client.query(
       `INSERT INTO ledger_entries (user_id, currency, direction, amount, reason, ref_type, ref_id)
-       VALUES ($1::uuid, $2::text, $3::ledger_direction, $4::numeric, 'admin_balance_adjust', 'admin', NULL)`,
+       VALUES ($1::uuid, $2::text, $3::ledger_direction, $4::numeric, 'balance_adjust', 'system', NULL)`,
       [input.userId, asset, dir, ledgerAmt],
     );
     void input.adminUserId;

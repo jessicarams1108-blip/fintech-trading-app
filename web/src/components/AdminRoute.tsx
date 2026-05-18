@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/state/AuthContext";
 
-const ADMIN_PRIMARY = (
-  import.meta.env.VITE_ADMIN_PRIMARY_EMAIL ?? "Hardewusi@gmail.com"
-).toLowerCase();
+import { isAdminEmail } from "@/lib/adminAccess";
 
 export function AdminRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -21,7 +19,7 @@ export function AdminRoute({ children }: { children: ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.email.toLowerCase() !== ADMIN_PRIMARY) {
+  if (!isAdminEmail(user.email)) {
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -27,10 +27,8 @@ export function formatAssetQuantity(symbol: string, quantity: string | number): 
   return s;
 }
 
-/** Total USD value expressed in whole BTC units at the given BTC/USD spot (for dual fiat + BTC headline). */
-export function formatBtcEquivalent(totalUsd: number, btcUsdSpot: number): string {
-  if (!Number.isFinite(totalUsd) || totalUsd <= 0) return "≈ 0 BTC";
-  if (!Number.isFinite(btcUsdSpot) || btcUsdSpot <= 0) return "—";
-  const btc = totalUsd / btcUsdSpot;
-  return `≈ ${formatAssetQuantity("BTC", btc)} BTC`;
+/** Total USD value shown as USDT (1:1 with USD for display). */
+export function formatUsdtEquivalent(totalUsd: number): string {
+  if (!Number.isFinite(totalUsd) || totalUsd <= 0) return "≈ 0 USDT";
+  return `≈ ${formatAssetQuantity("USDT", totalUsd)} USDT`;
 }

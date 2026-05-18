@@ -5,7 +5,7 @@ import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
 import type { AssetSymbol } from "@/types";
 import { uploadDepositProofIfConfigured } from "@/lib/depositProofUpload";
-import { formatAssetQuantity, formatBtcEquivalent } from "@/lib/portfolioFormat";
+import { formatAssetQuantity, formatUsdtEquivalent } from "@/lib/portfolioFormat";
 import { MaskedValue } from "@/state/BalanceVisibilityContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
 import { MarketOverviewPanel } from "@/components/MarketOverviewPanel";
@@ -17,7 +17,13 @@ import { usePreferences } from "@/state/PreferencesContext";
 const MIN_DEPOSIT_USD = 100;
 const DASHBOARD_ASSETS: AssetSymbol[] = ["BTC", "ETH", "USDT"];
 
-type Summary = { totalValueUsd: number; change24hPct: number; allocation: { symbol: string; valueUsd: number }[] };
+type Summary = {
+  totalValueUsd: number;
+  change24hPct: number;
+  allocation: { symbol: string; valueUsd: number }[];
+  yieldApyPct?: number;
+  yieldAccrualDays?: number;
+};
 type Holding = {
   symbol: string;
   quantity: string;
@@ -257,13 +263,9 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
     refetchInterval: 30_000,
   });
 
-  const btcUsdSpot = useMemo(() => {
-    const row = (topQ.data ?? []).find((t) => t.symbol === "BTC");
-    const px = row?.priceUsd;
-    return typeof px === "number" && Number.isFinite(px) && px > 0 ? px : 0;
-  }, [topQ.data]);
-
   const total = summaryQ.data?.totalValueUsd ?? 0;
+  const yieldApyPct = summaryQ.data?.yieldApyPct ?? 5;
+  const yieldAccrualDays = summaryQ.data?.yieldAccrualDays ?? 5;
   const fixedTotal = fixedQ.data?.activeTotalUsd ?? 0;
   const chg = summaryQ.data?.change24hPct ?? 0;
   const holdingsSortedByValue = useMemo(() => {
@@ -324,8 +326,11 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
                   <MaskedValue>{formatPortfolioTotal(total)}</MaskedValue>
                 </p>
                 <p className="mt-1 text-lg font-medium tabular-nums text-slate-700">
-                  <MaskedValue>{formatBtcEquivalent(total, btcUsdSpot)}</MaskedValue>
-                  <span className="ml-1 text-xs font-normal font-sans text-slate-500">{t("portfolio.btcSpot")}</span>
+                  <MaskedValue>{formatUsdtEquivalent(total)}</MaskedValue>
+                  <span className="ml-1 text-xs font-normal font-sans text-slate-500">{t("portfolio.usdtEquiv")}</span>
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {t("portfolio.yieldAccrual", { apy: yieldApyPct.toFixed(2), days: String(yieldAccrualDays) })}
                 </p>
                 <p className={`mt-2 text-sm font-medium ${chg >= 0 ? "text-emerald-600" : "text-red-600"}`}>
                   {chg >= 0 ? "+" : ""}

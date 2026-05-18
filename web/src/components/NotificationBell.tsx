@@ -58,6 +58,7 @@ function categoryIcon(category: string): string {
 function stripAdminCopy(text: string): string {
   return text
     .replace(/pending_admin/gi, "pending")
+    .replace(/admin_balance_adjust/gi, "balance adjust")
     .replace(/\badmin\b/gi, "")
     .replace(/\s{2,}/g, " ")
     .replace(/\s·\s·/g, " · ")

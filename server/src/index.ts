@@ -14,6 +14,7 @@ import { Server as SocketIOServer } from "socket.io";
 import jwt from "jsonwebtoken";
 import { env } from "./env.js";
 import { ensureDbReady } from "./db/ensureDbReady.js";
+import { runStartupBootstrap } from "./db/bootstrap.js";
 import { pgHost, pool } from "./db/index.js";
 import { getIdentitySchemaStatus } from "./lib/dbSchema.js";
 import {
@@ -195,6 +196,7 @@ async function startServer(): Promise<void> {
   await verifyPostgresWithRetry();
   try {
     await ensureDbReady();
+    await runStartupBootstrap();
   } catch (err) {
     console.error("[Startup] Database migration check failed:", err);
   }

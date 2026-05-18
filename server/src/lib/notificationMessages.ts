@@ -28,9 +28,15 @@ function isPendingStatus(status: string): boolean {
 function stripAdminCopy(text: string): string {
   return text
     .replace(/pending_admin/gi, "pending")
+    .replace(/admin_balance_adjust/gi, "balance adjust")
     .replace(/\badmin\b/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
+}
+
+function formatLedgerReason(reason: string | null | undefined): string {
+  if (!reason) return "";
+  return stripAdminCopy(reason.replace(/_/g, " "));
 }
 
 function fmtAmount(asset: string | null, amount: string | null): string {
@@ -204,6 +210,37 @@ export function historyEntryToNotification(entry: HistoryEntry): NotificationIte
     }
     default: {
       const reason = entry.detail ?? "";
+      if (
+        reason === "balance_adjust" ||
+        reason === "admin_balance_adjust" ||
+        (entry.type === "ledger" && /balance_adjust/i.test(reason))
+      ) {
+        const credit = entry.direction === "credit";
+        return {
+          id: entry.id,
+          at: entry.at,
+          category: "ledger",
+          status: entry.status,
+          isPending: false,
+          title: "Balance update",
+          message: amt
+            ? `${credit ? "+" : "-"}${amt}${reason ? ` · ${formatLedgerReason(reason)}` : ""}`
+            : "Your account balance was updated",
+          href: "/history?type=ledger",
+        };
+      }
+      if (reason === "portfolio_yield_accrual") {
+        return {
+          id: entry.id,
+          at: entry.at,
+          category: "portfolio",
+          status: entry.status,
+          isPending: false,
+          title: "Portfolio yield",
+          message: amt ? `${amt} credited to your USDT balance` : "5% APY accrual added to your portfolio",
+          href: "/dashboard",
+        };
+      }
       if (entry.type === "fixed_savings" || /fixed_savings/i.test(reason)) {
           return {
             id: entry.id,
@@ -217,14 +254,15 @@ export function historyEntryToNotification(entry: HistoryEntry): NotificationIte
           };
       }
       const credit = entry.direction === "credit";
+      const friendlyReason = formatLedgerReason(entry.detail);
       return {
         id: entry.id,
         at: entry.at,
         category: entry.type === "ledger" ? "ledger" : entry.type,
         status: entry.status,
         isPending: false,
-        title: entry.detail?.replace(/_/g, " ") ?? "Account activity",
-        message: amt ? `${credit ? "+" : "-"}${amt}` : entry.detail ?? "Ledger entry",
+        title: friendlyReason ? friendlyReason.replace(/\b\w/g, (c) => c.toUpperCase()) : "Account activity",
+        message: amt ? `${credit ? "+" : "-"}${amt}` : friendlyReason || "Ledger entry",
         href: "/history?type=ledger",
       };
     }

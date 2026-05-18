@@ -1,17 +1,12 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../env.js";
+import { isAdminEmail } from "../lib/adminAccess.js";
 
 export type JwtUser = {
   id: string;
   email: string;
 };
-
-const ADMIN_EMAIL_NORMALIZED = (
-  env.ADMIN_PRIMARY_EMAIL ??
-  // Default matches product owner allowlist (case-insensitive at check time).
-  "Hardewusi@gmail.com"
-).toLowerCase();
 
 export type AccessTokenClaims = JwtUser;
 
@@ -53,16 +48,14 @@ export function authenticateRequired(req: Request, res: Response, next: NextFunc
   }
 }
 
-/**
- * Locks admin surfaces to one primary operator email (upgrade to role column ASAP).
- */
+/** Admin surfaces: comma-separated ADMIN_EMAILS or ADMIN_PRIMARY_EMAIL (see adminAccess.ts). */
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const user = req.user;
   if (!user?.email) {
     res.status(401).json({ error: "Authentication required" });
     return;
   }
-  if (user.email.trim().toLowerCase() !== ADMIN_EMAIL_NORMALIZED) {
+  if (!isAdminEmail(user.email)) {
     res.status(403).json({ error: "Insufficient permissions" });
     return;
   }

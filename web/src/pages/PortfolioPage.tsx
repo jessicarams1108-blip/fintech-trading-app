@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/state/AuthContext";
-import { formatAssetQuantity, formatBtcEquivalent } from "@/lib/portfolioFormat";
+import { formatAssetQuantity, formatUsdtEquivalent } from "@/lib/portfolioFormat";
 import { MaskedValue } from "@/state/BalanceVisibilityContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
 import { MarketOverviewPanel } from "@/components/MarketOverviewPanel";
@@ -20,15 +19,6 @@ type Holding = {
   pnlPct: number;
 };
 
-type TopRow = { symbol: string; priceUsd: number };
-
-async function fetchTopPrices(): Promise<TopRow[]> {
-  const res = await apiFetch("/api/market/top-prices");
-  const body = (await res.json().catch(() => ({}))) as { data?: TopRow[] };
-  if (!res.ok) throw new Error("Could not load market prices");
-  return body.data ?? [];
-}
-
 async function fetchJson<T>(path: string, token: string): Promise<T> {
   const res = await apiFetch(path, { headers: { Authorization: `Bearer ${token}` } });
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
@@ -39,19 +29,6 @@ async function fetchJson<T>(path: string, token: string): Promise<T> {
 export function PortfolioPage() {
   const { token } = useAuth();
   const { formatMoney, formatPortfolioTotal, formatPrice } = usePreferences();
-
-  const topQ = useQuery({
-    queryKey: ["market", "top-prices"],
-    queryFn: fetchTopPrices,
-    staleTime: 20_000,
-    refetchInterval: 25_000,
-  });
-
-  const btcUsdSpot = useMemo(() => {
-    const row = (topQ.data ?? []).find((t) => t.symbol === "BTC");
-    const px = row?.priceUsd;
-    return typeof px === "number" && Number.isFinite(px) && px > 0 ? px : 0;
-  }, [topQ.data]);
 
   const summaryQ = useQuery({
     queryKey: ["portfolio", "summary", token],
@@ -114,8 +91,8 @@ export function PortfolioPage() {
                 <MaskedValue>{formatPortfolioTotal(total)}</MaskedValue>
               </p>
               <p className="mt-1 text-lg font-medium tabular-nums text-slate-700">
-                <MaskedValue>{formatBtcEquivalent(total, btcUsdSpot)}</MaskedValue>
-                <span className="ml-1 text-xs font-normal font-sans text-slate-500">(BTC at live spot)</span>
+                <MaskedValue>{formatUsdtEquivalent(total)}</MaskedValue>
+                <span className="ml-1 text-xs font-normal font-sans text-slate-500">(USDT equivalent)</span>
               </p>
               <p className={`mt-2 text-sm font-medium ${chg >= 0 ? "text-emerald-600" : "text-red-600"}`}>
                 {chg >= 0 ? "+" : ""}

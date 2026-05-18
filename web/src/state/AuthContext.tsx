@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { API_ORIGIN, apiFetch } from "@/lib/apiBase";
+import { isAdminEmail } from "@/lib/adminAccess";
 import { profileFromAuthUser, saveRegisteredProfile } from "@/lib/registeredProfile";
 
 export type AuthUser = {
@@ -31,10 +32,6 @@ type AuthContextValue = {
 };
 
 const STORAGE_KEY = "tradeone_auth_token";
-
-const ADMIN_EMAIL_PRIMARY = (
-  import.meta.env.VITE_ADMIN_PRIMARY_EMAIL ?? "Hardewusi@gmail.com"
-).toLowerCase();
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -137,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [token]);
 
-  const isAdmin = useMemo(() => user?.email.toLowerCase() === ADMIN_EMAIL_PRIMARY, [user]);
+  const isAdmin = useMemo(() => isAdminEmail(user?.email), [user]);
 
   const value = useMemo(
     () => ({

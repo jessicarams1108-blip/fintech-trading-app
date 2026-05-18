@@ -42,6 +42,8 @@ const schema = z.object({
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   /** Case-insensitive allowlist gate for MVP admin tooling. Prefer role column longer term. */
   ADMIN_PRIMARY_EMAIL: z.string().email().optional(),
+  /** Comma-separated admin emails (overrides single ADMIN_PRIMARY_EMAIL when set). */
+  ADMIN_EMAILS: z.preprocess(emptyToUndef, z.string().min(3).optional()),
   APP_ORIGIN: z.string().optional(),
   PORT: z.coerce.number().default(4000),
   /** Resend.com API key. If unset, OTP is logged to stdout and email is skipped (local dev). */
@@ -77,6 +79,7 @@ export const env = schema.parse({
   DATABASE_URL: process.env.DATABASE_URL,
   JWT_SECRET: process.env.JWT_SECRET,
   ADMIN_PRIMARY_EMAIL: process.env.ADMIN_PRIMARY_EMAIL,
+  ADMIN_EMAILS: process.env.ADMIN_EMAILS,
   APP_ORIGIN: process.env.APP_ORIGIN,
   PORT: process.env.PORT,
   RESEND_API_KEY: process.env.RESEND_API_KEY,

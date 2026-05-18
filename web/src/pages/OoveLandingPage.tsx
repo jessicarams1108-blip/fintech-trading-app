@@ -299,7 +299,7 @@ export function OoveLandingPage() {
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 sm:text-xl">
             Earn up to{" "}
             <span className="font-semibold text-oove-blue underline decoration-oove-blue decoration-wavy decoration-2 underline-offset-[5px]">
-              16.00%
+              5.00%
             </span>{" "}
             on your savings with industry-leading interest rates and balance protection up to $1M.
           </p>
