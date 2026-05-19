@@ -101,13 +101,24 @@ const STOCK_SYMBOLS = [
   "VOO",
 ];
 
-export async function fetchLiveStocks(): Promise<MarketRow[]> {
+export type LiveStocksPayload = {
+  rows: MarketRow[];
+  live: boolean;
+};
+
+export async function fetchLiveStocks(): Promise<LiveStocksPayload> {
   try {
     const res = await apiFetch(`/api/market/equity-quotes?symbols=${STOCK_SYMBOLS.join(",")}`);
-    const body = (await res.json().catch(() => ({}))) as { data?: MarketRow[]; error?: string };
-    if (res.ok && body.data && body.data.length > 0) return body.data;
+    const body = (await res.json().catch(() => ({}))) as {
+      data?: MarketRow[];
+      meta?: { live?: boolean };
+      error?: string;
+    };
+    if (res.ok && body.data && body.data.length > 0) {
+      return { rows: body.data, live: body.meta?.live === true };
+    }
   } catch {
     /* use snapshot below */
   }
-  return FALLBACK_STOCKS;
+  return { rows: FALLBACK_STOCKS, live: false };
 }

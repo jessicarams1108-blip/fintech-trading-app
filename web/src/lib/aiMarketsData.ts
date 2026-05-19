@@ -76,34 +76,7 @@ export const HARDCODED_BONDS: MarketRow[] = [
 
 export const STOCK_FILTER_PILLS = ["Today's top gainers", "Today's top losers", "Popular stocks", "ETFs"] as const;
 
-const ETF_SYMBOLS = new Set(["SPY", "QQQ", "IWM", "DIA", "VOO"]);
-
-/** Rotating window so "top gainers" cards change over time instead of always showing the same leaders. */
-export function pickRotatingStockRows(
-  rows: MarketRow[],
-  pill: string,
-  limit = 6,
-  rotateSeed = Math.floor(Date.now() / (30 * 60 * 1000)),
-): MarketRow[] {
-  if (rows.length === 0) return [];
-
-  let pool = [...rows];
-  if (pill.includes("ETF")) {
-    pool = pool.filter((r) => ETF_SYMBOLS.has(r.symbol));
-  } else if (pill.includes("gainers")) {
-    pool.sort((a, b) => b.change24h - a.change24h);
-  } else if (pill.includes("losers")) {
-    pool.sort((a, b) => a.change24h - b.change24h);
-  } else if (pill.includes("Popular")) {
-    pool.sort((a, b) => a.symbol.localeCompare(b.symbol));
-  }
-
-  if (pool.length <= limit) return pool;
-
-  const maxOffset = Math.max(1, pool.length - limit + 1);
-  const offset = rotateSeed % maxOffset;
-  return pool.slice(offset, offset + limit);
-}
+export const STOCK_ETF_SYMBOLS = new Set(["SPY", "QQQ", "IWM", "DIA", "VOO"]);
 
 export const BOND_FILTER_PILLS = ["Highest coupon", "Highest yield", "Short-term"] as const;
 

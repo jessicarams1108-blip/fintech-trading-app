@@ -93,60 +93,121 @@ export function snapshotQuotes(symbols: string[]): EquityQuoteRow[] {
   });
 }
 
-export async function fetchYahooEquityQuotes(symbols: string[]): Promise<EquityQuoteRow[]> {
-  if (symbols.length === 0) return [];
-  const yahooSyms = symbols.map(yahooSymbol);
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(yahooSyms.join(","))}`;
+function parseYahooBatch(body: unknown, symbols: string[]): EquityQuoteRow[] {
+  const payload = body as {
+    quoteResponse?: {
+      result?: Array<{
+        symbol?: string;
+        shortName?: string;
+        regularMarketPrice?: number;
+        regularMarketChangePercent?: number;
+      }>;
+    };
+  };
+  const byYahoo = new Map<string, EquityQuoteRow>();
+  for (const q of payload.quoteResponse?.result ?? []) {
+    const raw = String(q.symbol ?? "").toUpperCase();
+    const sym = raw.replace(".", "-");
+    if (!sym) continue;
+    const price = Number(q.regularMarketPrice);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    byYahoo.set(sym, {
+      id: sym.toLowerCase(),
+      name: q.shortName ?? EQUITY_META[sym] ?? sym,
+      symbol: sym,
+      price,
+      change24h: Number(q.regularMarketChangePercent) || 0,
+    });
+  }
+  return symbols
+    .map((s) => byYahoo.get(s) ?? byYahoo.get(yahooSymbol(s)))
+    .filter((r): r is EquityQuoteRow => !!r);
+}
+
+async function fetchYahooJson(url: string): Promise<unknown | null> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const yres = await fetch(url, {
+    const res = await fetch(url, {
       signal: ctrl.signal,
-      headers: {
-        "User-Agent": YAHOO_UA,
-        Accept: "application/json",
-      },
+      headers: { "User-Agent": YAHOO_UA, Accept: "application/json" },
     });
-    if (!yres.ok) return [];
-    const body = (await yres.json()) as {
-      quoteResponse?: {
-        result?: Array<{
-          symbol?: string;
-          shortName?: string;
-          regularMarketPrice?: number;
-          regularMarketChangePercent?: number;
-        }>;
-      };
-    };
-    const byYahoo = new Map<string, EquityQuoteRow>();
-    for (const q of body.quoteResponse?.result ?? []) {
-      const raw = String(q.symbol ?? "").toUpperCase();
-      const sym = raw.replace(".", "-");
-      if (!sym) continue;
-      byYahoo.set(sym, {
-        id: sym.toLowerCase(),
-        name: q.shortName ?? EQUITY_META[sym] ?? sym,
-        symbol: sym,
-        price: Number(q.regularMarketPrice) || 0,
-        change24h: Number(q.regularMarketChangePercent) || 0,
-      });
-    }
-    return symbols
-      .map((s) => byYahoo.get(s) ?? byYahoo.get(yahooSymbol(s)))
-      .filter((r): r is EquityQuoteRow => !!r && r.price > 0);
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
-    return [];
+    return null;
   } finally {
     clearTimeout(t);
   }
 }
 
-export async function resolveEquityQuotes(symbols: string[]): Promise<EquityQuoteRow[]> {
-  const live = await fetchYahooEquityQuotes(symbols);
-  if (live.length >= Math.min(5, symbols.length)) {
-    const liveSet = new Set(live.map((r) => r.symbol));
-    const missing = symbols.filter((s) => !liveSet.has(s));
-    return [...live, ...snapshotQuotes(missing)];
+export async function fetchYahooEquityQuotes(symbols: string[]): Promise<EquityQuoteRow[]> {
+  if (symbols.length === 0) return [];
+  const yahooSyms = symbols.map(yahooSymbol);
+  const urls = [
+    `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(yahooSyms.join(","))}`,
+    `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(yahooSyms.join(","))}`,
+  ];
+  for (const url of urls) {
+    const body = await fetchYahooJson(url);
+    if (!body) continue;
+    const rows = parseYahooBatch(body, symbols);
+    if (rows.length > 0) return rows;
   }
-  return snapshotQuotes(symbols);
+  return [];
+}
+
+async function fetchYahooChartQuote(sym: string): Promise<EquityQuoteRow | null> {
+  const ysym = yahooSymbol(sym);
+  const urls = [
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ysym)}?interval=1d&range=2d`,
+    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ysym)}?interval=1d&range=2d`,
+  ];
+  for (const url of urls) {
+    const body = (await fetchYahooJson(url)) as {
+      chart?: { result?: Array<{ meta?: Record<string, unknown> }> };
+    } | null;
+    const meta = body?.chart?.result?.[0]?.meta;
+    if (!meta) continue;
+    const price = Number(meta.regularMarketPrice);
+    const prev = Number(meta.chartPreviousClose ?? meta.previousClose);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    const change24h =
+      Number.isFinite(prev) && prev > 0 ? ((price - prev) / prev) * 100 : Number(meta.regularMarketChangePercent) || 0;
+    return {
+      id: sym.toLowerCase(),
+      name: EQUITY_META[sym] ?? sym,
+      symbol: sym,
+      price,
+      change24h,
+    };
+  }
+  return null;
+}
+
+export async function resolveEquityQuotes(
+  symbols: string[],
+): Promise<{ rows: EquityQuoteRow[]; live: boolean }> {
+  const batch = await fetchYahooEquityQuotes(symbols);
+  const bySym = new Map(batch.map((r) => [r.symbol, r]));
+  const missing = symbols.filter((s) => !bySym.has(s));
+
+  if (missing.length > 0 && missing.length <= 12) {
+    const chartRows = await Promise.all(missing.map((s) => fetchYahooChartQuote(s)));
+    for (const row of chartRows) {
+      if (row) bySym.set(row.symbol, row);
+    }
+  }
+
+  const liveCount = bySym.size;
+  const stillMissing = symbols.filter((s) => !bySym.has(s));
+  const rows = [
+    ...symbols.map((s) => bySym.get(s)).filter((r): r is EquityQuoteRow => !!r),
+    ...snapshotQuotes(stillMissing),
+  ];
+
+  return {
+    rows,
+    live: liveCount >= Math.min(5, symbols.length),
+  };
 }

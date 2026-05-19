@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Info } from "lucide-react";
 import { useAuth } from "@/state/AuthContext";
@@ -17,8 +17,8 @@ import {
   HARDCODED_BONDS,
   HARDCODED_OPTIONS,
   OPTIONS_FILTER_PILLS,
+  STOCK_ETF_SYMBOLS,
   STOCK_FILTER_PILLS,
-  pickRotatingStockRows,
   type MarketRow,
 } from "@/lib/aiMarketsData";
 import { fetchLiveCrypto, fetchLiveStocks } from "@/lib/aiMarketsLive";
@@ -32,19 +32,11 @@ export function AiTradingMarketsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState<(typeof TABS)[number]>("Stocks");
-  const [stockPill, setStockPill] = useState<string>(STOCK_FILTER_PILLS[2]);
+  const [stockPill, setStockPill] = useState<string>(STOCK_FILTER_PILLS[0]);
   const [bondPill, setBondPill] = useState<string>(BOND_FILTER_PILLS[0]);
   const [optPill, setOptPill] = useState<string>(OPTIONS_FILTER_PILLS[0]);
   const [tradeOpen, setTradeOpen] = useState(false);
   const [pick, setPick] = useState<{ asset: string; assetClass: string } | null>(null);
-  const [stockRotateTick, setStockRotateTick] = useState(0);
-
-  useEffect(() => {
-    if (tab !== "Stocks") return;
-    const id = window.setInterval(() => setStockRotateTick((t) => t + 1), 30 * 60 * 1000);
-    return () => window.clearInterval(id);
-  }, [tab]);
-
   const balanceQ = useQuery({
     queryKey: ["ai-balance", token],
     enabled: !!token,
@@ -61,15 +53,20 @@ export function AiTradingMarketsPage() {
   const stocksQ = useQuery({
     queryKey: ["ai-stocks-live"],
     queryFn: fetchLiveStocks,
-    staleTime: 120_000,
+    staleTime: 30_000,
+    refetchInterval: tab === "Stocks" ? 45_000 : false,
     enabled: tab === "Stocks",
   });
 
-  const displayStocks = useMemo(() => {
-    const rows = stocksQ.data ?? [];
-    const seed = stockRotateTick + stockPill.length;
-    return pickRotatingStockRows(rows, stockPill, 6, seed);
-  }, [stocksQ.data, stockPill, stockRotateTick]);
+  const sortedStocks = useMemo(() => {
+    const rows = [...(stocksQ.data?.rows ?? [])];
+    if (stockPill.includes("ETF")) {
+      return rows.filter((r) => STOCK_ETF_SYMBOLS.has(r.symbol)).sort((a, b) => b.change24h - a.change24h);
+    }
+    if (stockPill.includes("gainers")) return rows.sort((a, b) => b.change24h - a.change24h);
+    if (stockPill.includes("losers")) return rows.sort((a, b) => a.change24h - b.change24h);
+    return rows.sort((a, b) => a.symbol.localeCompare(b.symbol));
+  }, [stocksQ.data?.rows, stockPill]);
 
   const sortedBonds = useMemo(() => {
     const copy = [...HARDCODED_BONDS];
@@ -88,12 +85,25 @@ export function AiTradingMarketsPage() {
 
       {tab === "Stocks" && (
         <>
-          <SectionHead title="Explore stocks & ETFs" link="View all" />
+          <SectionHead
+            title="Explore stocks & ETFs"
+            link="View all"
+            extra={stocksQ.data?.live ? "Live · refreshes ~45s" : undefined}
+          />
           <FilterPills pills={STOCK_FILTER_PILLS} active={stockPill} onChange={setStockPill} />
           {stocksQ.isLoading ? (
             <Loading />
+          ) : stocksQ.isError ? (
+            <ErrorMsg msg="Could not load stock markets" />
           ) : (
-            <MarketStockCards rows={displayStocks} onPick={(r) => openTrade(r, "stocks")} />
+            <>
+              {!stocksQ.data?.live ? (
+                <p className="px-4 pb-1 text-center text-xs text-amber-700">
+                  Live quotes unavailable — rankings use cached data until the feed reconnects.
+                </p>
+              ) : null}
+              <MarketStockCards rows={sortedStocks} onPick={(r) => openTrade(r, "stocks")} />
+            </>
           )}
         </>
       )}
@@ -164,18 +174,19 @@ export function AiTradingMarketsPage() {
 
 function SectionHead({ title, link, extra }: { title: string; link?: string; extra?: string }) {
   return (
-    <div className="flex items-center justify-between pt-2">
+    <div className="flex items-center justify-between px-4 pt-2">
       <span className="flex items-center gap-1 text-sm font-semibold text-slate-900">
         {title}
         <Info className="h-3.5 w-3.5 text-slate-500" />
       </span>
-      {link ? (
-        <button type="button" className="text-sm font-medium text-oove-blue">
-          {link}
-        </button>
-      ) : extra ? (
-        <span className="text-xs text-slate-500">{extra} ↓</span>
-      ) : null}
+      <span className="flex items-center gap-3">
+        {extra ? <span className="text-xs font-medium text-emerald-600">{extra}</span> : null}
+        {link ? (
+          <button type="button" className="text-sm font-medium text-oove-blue">
+            {link}
+          </button>
+        ) : null}
+      </span>
     </div>
   );
 }

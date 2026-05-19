@@ -53,8 +53,8 @@ marketRouter.get("/equity-quotes", async (req, res, next) => {
     return;
   }
   try {
-    const rows = await resolveEquityQuotes(symbols);
-    res.json({ data: rows });
+    const { rows, live } = await resolveEquityQuotes(symbols);
+    res.json({ data: rows, meta: { live } });
   } catch (e) {
     next(e);
   }
