@@ -136,7 +136,7 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
   return (
     <div className="oove-card">
       <div>
-        <h3 className="oove-section-title">Deposit</h3>
+        <h3 className="oove-section-title">Deposit Confirmation</h3>
         <p className="mt-1 text-sm oove-body-muted">
           Choose asset and declared USD, attach a proof file if you have one, then submit after you have sent funds.
           Confirmation usually arrives within a few minutes.
@@ -296,7 +296,7 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
             to="/deposit"
             className="rounded-full bg-oove-blue px-4 py-2 text-sm font-semibold text-white hover:brightness-105"
           >
-            Deposit
+            Deposit Confirmation
           </Link>
           <Link
             to="/transfers"
