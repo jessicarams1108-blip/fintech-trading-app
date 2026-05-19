@@ -296,7 +296,7 @@ export function DashboardPortfolioBlock({ onDepositFlowChanged }: { onDepositFlo
             to="/deposit"
             className="rounded-full bg-oove-blue px-4 py-2 text-sm font-semibold text-white hover:brightness-105"
           >
-            Deposit Confirmation
+            Deposit
           </Link>
           <Link
             to="/transfers"
