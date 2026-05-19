@@ -5,6 +5,7 @@ import { authenticateRequired } from "../middleware/auth.js";
 import {
   countTradesThisWeek,
   depositToAiWallet,
+  withdrawFromAiWallet,
   ensureAiWallet,
   getAiWalletBalance,
   listUserTrades,
@@ -103,6 +104,26 @@ aiTradingRouter.post("/deposit", limiter, async (req, res, next) => {
       return;
     }
     const msg = e instanceof Error ? e.message : "Deposit failed";
+    res.status(400).json({ error: msg });
+  }
+});
+
+aiTradingRouter.post("/withdraw", limiter, async (req, res, next) => {
+  try {
+    const body = depositSchema.parse(req.body);
+    const result = await withdrawFromAiWallet(req.user!.id, body.amount);
+    res.json({
+      data: {
+        balance: result.balance,
+        cashBoxCreditedUsd: result.cashBoxCreditedUsd,
+      },
+    });
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      res.status(400).json({ error: e.errors[0]?.message ?? "Invalid request" });
+      return;
+    }
+    const msg = e instanceof Error ? e.message : "Withdrawal failed";
     res.status(400).json({ error: msg });
   }
 });

@@ -57,6 +57,27 @@ async function debitCashBoxUsd(client: import("pg").PoolClient, userId: string, 
   }
 }
 
+async function creditCashBoxUsd(
+  client: import("pg").PoolClient,
+  userId: string,
+  amountUsd: number,
+  refId: string,
+): Promise<void> {
+  const amt = amountUsd.toFixed(2);
+  await client.query(
+    `INSERT INTO wallets (user_id, currency, balance)
+     VALUES ($1::uuid, 'USDT', $2::numeric)
+     ON CONFLICT (user_id, currency)
+     DO UPDATE SET balance = wallets.balance + EXCLUDED.balance`,
+    [userId, amt],
+  );
+  await client.query(
+    `INSERT INTO ledger_entries (user_id, currency, direction, amount, reason, ref_type, ref_id)
+     VALUES ($1::uuid, 'USDT', 'credit', $3::numeric, 'ai_trading_withdraw', 'ai_trading', $4::uuid)`,
+    [userId, amt, refId],
+  );
+}
+
 export async function getAiWalletBalance(userId: string): Promise<number> {
   const { rows } = await pool.query<{ balance: string }>(
     `SELECT balance::text FROM ai_trading_wallets WHERE user_id = $1::uuid`,
@@ -150,6 +171,42 @@ export async function depositToAiWallet(userId: string, amountUsd: number): Prom
     );
     await client.query("COMMIT");
     return Number.parseFloat(rows[0]?.balance ?? "0") || 0;
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export async function withdrawFromAiWallet(
+  userId: string,
+  amountUsd: number,
+): Promise<{ balance: number; cashBoxCreditedUsd: number }> {
+  if (!Number.isFinite(amountUsd) || amountUsd < MIN_AI_WALLET_DEPOSIT_USD) {
+    throw new Error(`Minimum withdrawal is $${MIN_AI_WALLET_DEPOSIT_USD}`);
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const refId = crypto.randomUUID();
+    const { rows } = await client.query<{ balance: string }>(
+      `UPDATE ai_trading_wallets
+       SET balance = balance - $2::numeric, updated_at = NOW()
+       WHERE user_id = $1::uuid AND balance >= $2::numeric
+       RETURNING balance::text`,
+      [userId, amountUsd],
+    );
+    if (!rows[0]) {
+      throw new Error("Insufficient AI trading balance");
+    }
+    await creditCashBoxUsd(client, userId, amountUsd, refId);
+    await client.query("COMMIT");
+    return {
+      balance: Number.parseFloat(rows[0].balance) || 0,
+      cashBoxCreditedUsd: amountUsd,
+    };
   } catch (e) {
     await client.query("ROLLBACK");
     throw e;

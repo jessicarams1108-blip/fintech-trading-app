@@ -69,6 +69,19 @@ export async function depositToAiWallet(token: string, amount: number): Promise<
   return body.data.balance;
 }
 
+export async function withdrawFromAiWallet(
+  token: string,
+  amount: number,
+): Promise<{ balance: number; cashBoxCreditedUsd: number }> {
+  const res = await apiFetch("/api/ai-trading/withdraw", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ amount }),
+  });
+  const body = await parse<{ data: { balance: number; cashBoxCreditedUsd: number } }>(res);
+  return body.data;
+}
+
 export async function adminListAiTrades(token: string, status: string): Promise<AiTrade[]> {
   const res = await apiFetch(`/api/admin/ai-trading/trades?status=${encodeURIComponent(status)}`, {
     headers: { Authorization: `Bearer ${token}` },
