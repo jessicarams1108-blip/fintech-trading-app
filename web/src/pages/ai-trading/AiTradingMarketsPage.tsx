@@ -96,14 +96,7 @@ export function AiTradingMarketsPage() {
           ) : stocksQ.isError ? (
             <ErrorMsg msg="Could not load stock markets" />
           ) : (
-            <>
-              {!stocksQ.data?.live ? (
-                <p className="px-4 pb-1 text-center text-xs text-amber-700">
-                  Live quotes unavailable — rankings use cached data until the feed reconnects.
-                </p>
-              ) : null}
-              <MarketStockCards rows={sortedStocks} onPick={(r) => openTrade(r, "stocks")} />
-            </>
+            <MarketStockCards rows={sortedStocks} onPick={(r) => openTrade(r, "stocks")} />
           )}
         </>
       )}
