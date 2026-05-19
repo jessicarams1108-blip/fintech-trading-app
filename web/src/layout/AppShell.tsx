@@ -32,6 +32,7 @@ const sidebarAdminNav: NavDescriptor[] = [
   { to: "/admin/identity", labelKey: "nav.adminIdentity", adminOnly: true },
   { to: "/admin/fixed-savings", labelKey: "nav.adminFixedSavings", adminOnly: true },
   { to: "/admin/ai-trading", labelKey: "nav.adminAiTrading", adminOnly: true },
+  { to: "/admin/support", labelKey: "nav.adminSupport", adminOnly: true },
 ];
 
 function HamburgerIcon({ open }: { open: boolean }) {
@@ -275,6 +276,21 @@ export function AppShell() {
                       }
                     >
                       {t("shell.settings")}
+                    </NavLink>
+                    <NavLink
+                      to="/support"
+                      role="menuitem"
+                      onClick={() => setProfileOpen(false)}
+                      className={({ isActive }) =>
+                        clsx(
+                          "block px-3 py-2.5 font-medium hover:bg-slate-50 dark:hover:bg-oove-card-muted",
+                          isActive
+                            ? "bg-slate-100 text-accent dark:bg-oove-card-muted dark:text-white"
+                            : "text-slate-800 dark:text-slate-200",
+                        )
+                      }
+                    >
+                      {t("shell.support")}
                     </NavLink>
                   </div>
 

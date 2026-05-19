@@ -41,6 +41,8 @@ import { walletRouter } from "./routes/wallet.js";
 import { createAdminFixedSavingsRoutes } from "./routes/adminFixedSavings.js";
 import { aiTradingRouter } from "./routes/aiTrading.js";
 import { createAdminAiTradingRoutes } from "./routes/adminAiTrading.js";
+import { supportRouter } from "./routes/support.js";
+import { createAdminSupportRoutes } from "./routes/adminSupport.js";
 import { startFixedSavingsCron } from "./jobs/fixedSavingsCron.js";
 
 /** Built Vite app (`npm run build -w web`), resolved from `server/dist/index.js`. */
@@ -134,6 +136,7 @@ app.use("/api/identity", identityRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/fixed-plans", fixedSavingsRouter);
 app.use("/api/ai-trading", aiTradingRouter);
+app.use("/api/support", supportRouter);
 app.use("/api/wallet", walletRouter);
 app.use("/api/deposit", depositLimiter, createPublicDepositRoutes());
 app.use("/api/admin", createAdminDepositRoutes(io));
@@ -141,6 +144,7 @@ app.use("/api/admin", createAdminOpsRoutes(io));
 app.use("/api/admin", createAdminIdentityRoutes());
 app.use("/api/admin", createAdminFixedSavingsRoutes());
 app.use("/api/admin", createAdminAiTradingRoutes());
+app.use("/api/admin", createAdminSupportRoutes());
 
 if (serveWeb) {
   app.use(express.static(WEB_DIST, { index: false }));

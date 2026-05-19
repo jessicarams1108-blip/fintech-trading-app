@@ -20,6 +20,8 @@ import { TransfersPage } from "@/pages/TransfersPage";
 import { WatchlistPage } from "@/pages/WatchlistPage";
 import { HistoryPage } from "@/pages/HistoryPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { SupportPage } from "@/pages/SupportPage";
+import { AdminSupportPage } from "@/pages/AdminSupportPage";
 import { FixedPlansPage } from "@/pages/FixedPlansPage";
 import { FixedPlanCreatePage } from "@/pages/FixedPlanCreatePage";
 import { AdminFixedSavingsPage } from "@/pages/AdminFixedSavingsPage";
@@ -57,6 +59,7 @@ export default function App() {
           <Route path="watchlist" element={<WatchlistPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="support" element={<SupportPage />} />
           <Route path="verify-identity" element={<IdentityVerificationPage />} />
           <Route
             path="admin/console"
@@ -95,6 +98,14 @@ export default function App() {
             element={
               <AdminRoute>
                 <AdminAiTradingPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/support"
+            element={
+              <AdminRoute>
+                <AdminSupportPage />
               </AdminRoute>
             }
           />
