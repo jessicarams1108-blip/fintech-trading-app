@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Info } from "lucide-react";
 import { useAuth } from "@/state/AuthContext";
@@ -18,6 +18,7 @@ import {
   HARDCODED_OPTIONS,
   OPTIONS_FILTER_PILLS,
   STOCK_FILTER_PILLS,
+  pickRotatingStockRows,
   type MarketRow,
 } from "@/lib/aiMarketsData";
 import { fetchLiveCrypto, fetchLiveStocks } from "@/lib/aiMarketsLive";
@@ -36,6 +37,13 @@ export function AiTradingMarketsPage() {
   const [optPill, setOptPill] = useState<string>(OPTIONS_FILTER_PILLS[0]);
   const [tradeOpen, setTradeOpen] = useState(false);
   const [pick, setPick] = useState<{ asset: string; assetClass: string } | null>(null);
+  const [stockRotateTick, setStockRotateTick] = useState(0);
+
+  useEffect(() => {
+    if (tab !== "Stocks") return;
+    const id = window.setInterval(() => setStockRotateTick((t) => t + 1), 30 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, [tab]);
 
   const balanceQ = useQuery({
     queryKey: ["ai-balance", token],
@@ -57,13 +65,11 @@ export function AiTradingMarketsPage() {
     enabled: tab === "Stocks",
   });
 
-  const sortedStocks = useMemo(() => {
+  const displayStocks = useMemo(() => {
     const rows = stocksQ.data ?? [];
-    const copy = [...rows];
-    if (stockPill.includes("gainers")) copy.sort((a, b) => b.change24h - a.change24h);
-    else if (stockPill.includes("losers")) copy.sort((a, b) => a.change24h - b.change24h);
-    return copy;
-  }, [stocksQ.data, stockPill]);
+    const seed = stockRotateTick + stockPill.length;
+    return pickRotatingStockRows(rows, stockPill, 6, seed);
+  }, [stocksQ.data, stockPill, stockRotateTick]);
 
   const sortedBonds = useMemo(() => {
     const copy = [...HARDCODED_BONDS];
@@ -87,7 +93,7 @@ export function AiTradingMarketsPage() {
           {stocksQ.isLoading ? (
             <Loading />
           ) : (
-            <MarketStockCards rows={sortedStocks} onPick={(r) => openTrade(r, "stocks")} />
+            <MarketStockCards rows={displayStocks} onPick={(r) => openTrade(r, "stocks")} />
           )}
         </>
       )}

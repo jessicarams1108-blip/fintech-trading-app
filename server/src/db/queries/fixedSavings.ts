@@ -261,7 +261,7 @@ async function creditUsdEquivalent(
   );
   await client.query(
     `INSERT INTO ledger_entries (user_id, currency, direction, amount, reason, ref_type, ref_id)
-     VALUES ($1::uuid, 'USDT', 'credit', $3::numeric, $4, 'fixed_savings', $5::uuid)`,
+     VALUES ($1::uuid, 'USDT', 'credit', $2::numeric, $3, 'fixed_savings', $4::uuid)`,
     [userId, amt, reason, refId],
   );
 }

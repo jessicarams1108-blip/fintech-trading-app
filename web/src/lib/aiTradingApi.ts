@@ -30,6 +30,20 @@ async function parse<T>(res: Response): Promise<T> {
   return body;
 }
 
+async function apiPost<T>(path: string, token: string, payload: unknown): Promise<T> {
+  let res: Response;
+  try {
+    res = await apiFetch(path, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error("Could not reach the server. Check your connection and try again.");
+  }
+  return parse<T>(res);
+}
+
 export async function fetchAiBalance(token: string): Promise<AiBalance> {
   const res = await apiFetch("/api/ai-trading/balance", {
     headers: { Authorization: `Bearer ${token}` },
@@ -60,12 +74,7 @@ export async function startAiTrade(
 }
 
 export async function depositToAiWallet(token: string, amount: number): Promise<number> {
-  const res = await apiFetch("/api/ai-trading/deposit", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ amount }),
-  });
-  const body = await parse<{ data: { balance: number } }>(res);
+  const body = await apiPost<{ data: { balance: number } }>("/api/ai-trading/deposit", token, { amount });
   return body.data.balance;
 }
 
@@ -73,12 +82,11 @@ export async function withdrawFromAiWallet(
   token: string,
   amount: number,
 ): Promise<{ balance: number; cashBoxCreditedUsd: number }> {
-  const res = await apiFetch("/api/ai-trading/withdraw", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ amount }),
-  });
-  const body = await parse<{ data: { balance: number; cashBoxCreditedUsd: number } }>(res);
+  const body = await apiPost<{ data: { balance: number; cashBoxCreditedUsd: number } }>(
+    "/api/ai-trading/withdraw",
+    token,
+    { amount },
+  );
   return body.data;
 }
 

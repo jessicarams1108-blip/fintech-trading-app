@@ -165,7 +165,7 @@ app.use(
       /deposit not pending|missing unexpectedly/i.test(message) ||
       message === "Malformed transaction identifier for asset" ||
       /KYC columns are missing|Identity verification table is missing|User profile columns are missing|npm run db:(sql|migrate)/i.test(message) ||
-      /Insufficient wallet balance|Insufficient balance|Insufficient CashBox|Amount exceeds|Amount must be|Duration must be|Plan not found|Identity verification must be approved|Not yet matured|Subscription not found|Recipient not found|Borrow position not active|Invalid borrow position|Watchlist not available|Username not allowed|Username is taken|Current password incorrect/i.test(
+      /Insufficient wallet balance|Insufficient balance|Insufficient CashBox|Insufficient AI trading|Minimum (deposit|withdrawal|trade)|Weekly trade limit|already have a running trade|No USD price available|Amount exceeds|Amount must be|Duration must be|Plan not found|Identity verification must be approved|Not yet matured|Subscription not found|Recipient not found|Borrow position not active|Invalid borrow position|Watchlist not available|Username not allowed|Username is taken|Current password incorrect/i.test(
         message,
       );
 

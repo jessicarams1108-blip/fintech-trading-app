@@ -73,7 +73,7 @@ async function creditCashBoxUsd(
   );
   await client.query(
     `INSERT INTO ledger_entries (user_id, currency, direction, amount, reason, ref_type, ref_id)
-     VALUES ($1::uuid, 'USDT', 'credit', $3::numeric, 'ai_trading_withdraw', 'ai_trading', $4::uuid)`,
+     VALUES ($1::uuid, 'USDT', 'credit', $2::numeric, 'ai_trading_withdraw', 'ai_trading', $3::uuid)`,
     [userId, amt, refId],
   );
 }
@@ -193,7 +193,7 @@ export async function withdrawFromAiWallet(
     const refId = crypto.randomUUID();
     const { rows } = await client.query<{ balance: string }>(
       `UPDATE ai_trading_wallets
-       SET balance = balance - $2::numeric, updated_at = NOW()
+       SET balance = balance - $2::numeric
        WHERE user_id = $1::uuid AND balance >= $2::numeric
        RETURNING balance::text`,
       [userId, amountUsd],
