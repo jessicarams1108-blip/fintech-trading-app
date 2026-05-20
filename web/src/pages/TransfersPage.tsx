@@ -323,9 +323,6 @@ export function TransfersPage() {
                 value={wdAmount}
                 onChange={(e) => setWdAmount(e.target.value)}
               />
-              <p className="text-xs text-slate-500">
-                Cannot exceed cash balance. Funds are debited only after admin approval.
-              </p>
               <label className="block text-sm font-medium text-slate-700">Bank name</label>
               <input
                 className="w-full rounded-xl border px-3 py-2"
