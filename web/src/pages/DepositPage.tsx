@@ -16,8 +16,7 @@ import {
   depositStepsForAsset,
 } from "@/lib/depositConstants";
 import { marketSpotPriceQueryOptions } from "@/lib/marketSpotPrice";
-import { uploadDepositProofIfConfigured } from "@/lib/depositProofUpload";
-import { parseApiError } from "@/lib/apiError";
+import { submitDepositWithProof } from "@/lib/depositSubmit";
 import { useAuth } from "@/state/AuthContext";
 import { DepositUsdAmountPicker } from "@/components/DepositUsdAmountPicker";
 
@@ -117,26 +116,12 @@ export function DepositPage() {
     setError(null);
     setSubmitting(true);
     try {
-      let depositProofKey: string | undefined;
-      if (proofFile) {
-        const uploadedKey = await uploadDepositProofIfConfigured(token, proofFile);
-        if (uploadedKey) depositProofKey = uploadedKey;
-      }
-      const res = await apiFetch("/api/deposit/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          asset,
-          declaredAmountUsd: declared,
-          ...(depositProofKey ? { depositProofKey } : {}),
-          screenshotFileName: proofFile.name,
-        }),
+      await submitDepositWithProof({
+        token,
+        asset,
+        declaredAmountUsd: declared,
+        proofFile,
       });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(parseApiError(body, "Submission failed", res.status));
       setProofFile(null);
       setFlowStep("pending_review");
     } catch (err) {

@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   confirmDeposit,
   getDepositById,
+  getDepositProofFile,
   getPendingDeposits,
   insertDeposit,
   listUserDepositActivity,
@@ -34,6 +35,9 @@ const submitSchema = z
     screenshotFileName: z.string().max(260).nullable().optional(),
     /** Object key returned from POST /api/deposit/presign (must belong to the signed-in user). */
     depositProofKey: z.string().min(10).max(500).optional(),
+    /** Base64-encoded proof image/PDF (stored in Postgres — no S3 required). */
+    proofFileBase64: z.string().min(16).max(6_000_000).optional(),
+    proofMime: z.string().min(3).max(120).optional(),
     declaredAmountUsd: z.coerce
       .number()
       .refine((n) => Number.isFinite(n) && n >= MIN_DEPOSIT_USD && n <= MAX_DEPOSIT_USD, {
@@ -42,15 +46,34 @@ const submitSchema = z
   })
   .superRefine((data, ctx) => {
     const hasKey = Boolean(data.depositProofKey?.trim());
-    const hasFile = Boolean(data.screenshotFileName?.trim());
-    if (!hasKey && !hasFile) {
+    const hasBase64 = Boolean(data.proofFileBase64?.trim());
+    if (!hasKey && !hasBase64) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Upload a payment proof file before submitting.",
-        path: ["screenshotFileName"],
+        path: ["proofFileBase64"],
       });
     }
   });
+
+const MAX_PROOF_BYTES = 4 * 1024 * 1024;
+
+function parseProofBase64(base64: string, mimeRaw: string | undefined): { buffer: Buffer; mime: string } {
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(base64, "base64");
+  } catch {
+    throw new Error("Proof file data is invalid.");
+  }
+  if (buffer.length === 0 || buffer.length > MAX_PROOF_BYTES) {
+    throw new Error("Proof file must be between 1 byte and 4 MB.");
+  }
+  const mime = (mimeRaw ?? "application/octet-stream").toLowerCase().split(";")[0]!.trim();
+  if (!mime.startsWith("image/") && mime !== "application/pdf") {
+    throw new Error("Proof must be an image or PDF.");
+  }
+  return { buffer, mime };
+}
 
 const presignSchema = z.object({
   fileName: z.string().min(1).max(260),
@@ -109,7 +132,13 @@ export function createPublicDepositRoutes() {
   const router = Router();
 
   router.get("/capabilities", (_req, res) => {
-    res.json({ data: { depositProofUploads: isS3DepositUploadConfigured() } });
+    res.json({
+      data: {
+        depositProofUploads: true,
+        depositProofViaApi: true,
+        depositProofViaS3: isS3DepositUploadConfigured(),
+      },
+    });
   });
 
   router.get("/config", (req, res) => {
@@ -180,9 +209,23 @@ export function createPublicDepositRoutes() {
         rawTx.length > 0
           ? validateTxHash(parsed.data.asset as DepositAsset, rawTx)
           : generatedPendingTxHash(parsed.data.asset as DepositAsset);
+      let proofFile: Buffer | null = null;
+      let proofMime: string | null = null;
+      const b64 = parsed.data.proofFileBase64?.trim();
+      if (b64) {
+        try {
+          const parsedProof = parseProofBase64(b64, parsed.data.proofMime);
+          proofFile = parsedProof.buffer;
+          proofMime = parsedProof.mime;
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Invalid proof file";
+          return res.status(400).json({ error: msg });
+        }
+      }
+
       let proof: string | null;
       try {
-        proof = resolveProofImageUrl(req.user!.id, parsed.data);
+        proof = proofFile ? "deposit-db-stored" : resolveProofImageUrl(req.user!.id, parsed.data);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Invalid proof";
         return res.status(400).json({ error: msg });
@@ -197,6 +240,8 @@ export function createPublicDepositRoutes() {
         txHash: txHashClean,
         proofImageUrl: proof,
         declaredAmountUsd: parsed.data.declaredAmountUsd,
+        proofFile,
+        proofMime,
       });
 
       res.status(201).json({ data: record });
@@ -223,7 +268,7 @@ export function createAdminDepositRoutes(io: SocketIOServer) {
     }
   });
 
-  router.get("/deposit/:id/proof", async (req, res, next) => {
+  router.get("/deposit/:id/proof-file", async (req, res, next) => {
     const depositId = String(req.params.id ?? "").trim();
     if (!depositId) {
       return res.status(400).json({ error: "Deposit id required" });
@@ -233,11 +278,20 @@ export function createAdminDepositRoutes(io: SocketIOServer) {
       if (!deposit) {
         return res.status(404).json({ error: "Deposit not found" });
       }
+
+      const stored = await getDepositProofFile(depositId);
+      if (stored) {
+        res.setHeader("Content-Type", stored.mime);
+        res.setHeader("Cache-Control", "private, max-age=300");
+        res.send(stored.data);
+        return;
+      }
+
       const resolved = await resolveDepositProofViewUrl(deposit.proof_image_url, deposit.user_id);
       if (!resolved.ok) {
         return res.status(404).json({ error: resolved.error });
       }
-      res.json({ data: { viewUrl: resolved.viewUrl } });
+      res.redirect(302, resolved.viewUrl);
     } catch (err) {
       next(err);
     }

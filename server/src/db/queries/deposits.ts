@@ -32,6 +32,29 @@ function mapPending(row: DepositRow): PendingDepositDto {
   };
 }
 
+const MAX_PROOF_BYTES = 4 * 1024 * 1024;
+
+/** Returns stored proof bytes when migration 018 has been applied. */
+export async function getDepositProofFile(
+  depositId: string,
+): Promise<{ data: Buffer; mime: string } | null> {
+  try {
+    const { rows } = await pool.query<{ proof_file: Buffer | null; proof_mime: string | null }>(
+      `SELECT proof_file, proof_mime FROM deposits WHERE id = $1::uuid`,
+      [depositId],
+    );
+    const row = rows[0];
+    if (!row?.proof_file || row.proof_file.length === 0) return null;
+    return {
+      data: row.proof_file,
+      mime: row.proof_mime?.trim() || "application/octet-stream",
+    };
+  } catch (err) {
+    if (isPgUndefinedColumn(err)) return null;
+    throw err;
+  }
+}
+
 /** Inserts deposit with status pending_review — duplicates TX hash prevented while not rejected. */
 export async function insertDeposit(input: {
   userId: string;
@@ -39,6 +62,8 @@ export async function insertDeposit(input: {
   txHash: string;
   proofImageUrl: string | null;
   declaredAmountUsd: number;
+  proofFile?: Buffer | null;
+  proofMime?: string | null;
 }): Promise<PendingDepositDto> {
   const dup = await pool.query(
     `SELECT 1 FROM deposits
@@ -51,12 +76,39 @@ export async function insertDeposit(input: {
     throw new Error("TX hash already submitted");
   }
 
-  const run = async (includeDeclared: boolean) => {
-    const declaredSql = includeDeclared ? "$5::numeric" : "NULL::numeric";
-    const params = includeDeclared
-      ? [input.userId, input.asset, input.txHash, input.proofImageUrl, input.declaredAmountUsd]
-      : [input.userId, input.asset, input.txHash, input.proofImageUrl];
-    const declaredSelect = includeDeclared
+  const hasBlob = Boolean(input.proofFile && input.proofFile.length > 0);
+  if (hasBlob && input.proofFile!.length > MAX_PROOF_BYTES) {
+    throw new Error("Proof file must be 4 MB or smaller.");
+  }
+
+  const runInsert = async (opts: { includeDeclared: boolean; includeBlob: boolean }) => {
+    const cols = ["user_id", "asset", "tx_hash", "proof_image_url"];
+    const vals = ["$1::uuid", "$2::text", "$3::text", "$4::text"];
+    const params: unknown[] = [input.userId, input.asset, input.txHash, input.proofImageUrl];
+    let n = 4;
+
+    if (opts.includeDeclared) {
+      n += 1;
+      cols.push("declared_amount_usd");
+      vals.push(`$${n}::numeric`);
+      params.push(input.declaredAmountUsd);
+    }
+
+    if (opts.includeBlob && hasBlob) {
+      n += 1;
+      cols.push("proof_file");
+      vals.push(`$${n}::bytea`);
+      params.push(input.proofFile);
+      n += 1;
+      cols.push("proof_mime");
+      vals.push(`$${n}::text`);
+      params.push(input.proofMime ?? "application/octet-stream");
+    }
+
+    cols.push("status");
+    vals.push("'pending_review'");
+
+    const declaredSelect = opts.includeDeclared
       ? "deposits.declared_amount_usd::text AS declared_amount_usd"
       : "NULL::text AS declared_amount_usd";
 
@@ -72,8 +124,8 @@ export async function insertDeposit(input: {
       status: PendingDepositDto["status"];
       credited_amount: string | null;
     }>(
-      `INSERT INTO deposits (user_id, asset, tx_hash, proof_image_url, declared_amount_usd, status)
-       VALUES ($1::uuid, $2::text, $3::text, $4::text, ${declaredSql}, 'pending_review')
+      `INSERT INTO deposits (${cols.join(", ")})
+       VALUES (${vals.join(", ")})
        RETURNING
          deposits.id,
          deposits.user_id,
@@ -103,14 +155,28 @@ export async function insertDeposit(input: {
     });
   };
 
-  try {
-    return await run(true);
-  } catch (err) {
-    if (isPgUndefinedColumn(err)) {
-      return run(false);
+  const attempts: { includeDeclared: boolean; includeBlob: boolean }[] = hasBlob
+    ? [
+        { includeDeclared: true, includeBlob: true },
+        { includeDeclared: false, includeBlob: true },
+        { includeDeclared: true, includeBlob: false },
+        { includeDeclared: false, includeBlob: false },
+      ]
+    : [
+        { includeDeclared: true, includeBlob: false },
+        { includeDeclared: false, includeBlob: false },
+      ];
+
+  let lastErr: unknown;
+  for (const opts of attempts) {
+    try {
+      return await runInsert(opts);
+    } catch (err) {
+      lastErr = err;
+      if (!isPgUndefinedColumn(err)) throw err;
     }
-    throw err;
   }
+  throw lastErr;
 }
 
 /** Lists deposits awaiting ops review joined with owning user emails. */

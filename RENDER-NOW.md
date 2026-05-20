@@ -33,7 +33,7 @@ If **two** full Render tries fail, say **"Render failed twice"** in chat — we 
    npm run db:migrate -w server
    ```
 
-   (`db:migrate` adds identity verification and other incremental tables; safe to re-run.)
+   (`db:migrate` adds identity verification, deposit proof image storage, and other tables; safe to re-run.)
 
 2. Open in browser (your URL may differ slightly):
 

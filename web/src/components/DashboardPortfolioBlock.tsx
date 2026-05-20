@@ -4,14 +4,13 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
 import type { AssetSymbol } from "@/types";
-import { uploadDepositProofIfConfigured } from "@/lib/depositProofUpload";
+import { submitDepositWithProof } from "@/lib/depositSubmit";
 import { formatAssetQuantity, formatUsdtEquivalent } from "@/lib/portfolioFormat";
 import { MaskedValue } from "@/state/BalanceVisibilityContext";
 import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeToggle";
 import { MarketOverviewPanel } from "@/components/MarketOverviewPanel";
 import { DepositUsdAmountPicker } from "@/components/DepositUsdAmountPicker";
 import { apiFetch } from "@/lib/apiBase";
-import { parseApiError } from "@/lib/apiError";
 import { marketSpotPriceQueryOptions } from "@/lib/marketSpotPrice";
 import { fetchFixedSavingsSummary } from "@/lib/fixedSavingsApi";
 import { usePreferences } from "@/state/PreferencesContext";
@@ -92,28 +91,12 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
       if (!Number.isFinite(declared) || declared < MIN_DEPOSIT_USD) {
         throw new Error(`Declare at least $${MIN_DEPOSIT_USD} USD equivalent.`);
       }
-      let depositProofKey: string | undefined;
-      if (proofFile) {
-        const uploadedKey = await uploadDepositProofIfConfigured(token, proofFile);
-        if (uploadedKey) depositProofKey = uploadedKey;
-      }
-
-      const res = await apiFetch("/api/deposit/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          asset,
-          declaredAmountUsd: declared,
-          ...(depositProofKey ? { depositProofKey } : {}),
-          ...(proofFile ? { screenshotFileName: proofFile.name } : {}),
-        }),
+      return submitDepositWithProof({
+        token,
+        asset,
+        declaredAmountUsd: declared,
+        proofFile,
       });
-      const body = (await res.json().catch(() => ({}))) as { data?: { id: string }; error?: string };
-      if (!res.ok) throw new Error(parseApiError(body, "Submit failed", res.status));
-      return body.data?.id ?? "";
     },
     onSuccess: (id) => {
       showToast("Proof submitted — waiting for operator confirmation.");

@@ -103,7 +103,15 @@ export async function resolveDepositProofViewUrl(
     return {
       ok: false,
       error:
-        "This deposit only has a filename on file—the image was not stored in cloud storage. Ask the user to submit again with S3/R2 configured, or request the screenshot by email.",
+        "This deposit only saved a filename, not the image. Ask the user to submit a new deposit with a proof screenshot (after the latest app update).",
+    };
+  }
+
+  if (proofImageUrl.trim() === "deposit-db-stored") {
+    return {
+      ok: false,
+      error:
+        "Proof image is missing from the database. Run migration db/migrations/018_deposit_proof_file.sql on Render, then ask the user to resubmit.",
     };
   }
 

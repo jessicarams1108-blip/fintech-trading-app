@@ -51,16 +51,18 @@ export function AdminDepositReviewTable({ refreshToken = 0, onQueuesChanged }: P
     if (!token) return;
     setProofBusyId(depositId);
     try {
-      const res = await apiFetch(`/api/admin/deposit/${depositId}/proof`, {
+      const res = await apiFetch(`/api/admin/deposit/${depositId}/proof-file`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
         throw new Error(parseApiError(body, "Could not load proof file", res.status));
       }
-      const viewUrl = (body as { data?: { viewUrl?: string } }).data?.viewUrl;
-      if (!viewUrl) throw new Error("Invalid proof response from server");
-      window.open(viewUrl, "_blank", "noopener,noreferrer");
+      const blob = await res.blob();
+      if (!blob.size) throw new Error("Proof file is empty");
+      const objectUrl = URL.createObjectURL(blob);
+      window.open(objectUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120_000);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Could not open proof");
     } finally {
