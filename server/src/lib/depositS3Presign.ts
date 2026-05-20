@@ -2,13 +2,11 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../env.js";
 
+import { isS3DepositStorageConfigured } from "./depositProofView.js";
+
 export function isS3DepositUploadConfigured(): boolean {
-  return Boolean(
-    env.S3_DEPOSIT_BUCKET &&
-      env.S3_REGION &&
-      env.S3_ACCESS_KEY_ID &&
-      env.S3_SECRET_ACCESS_KEY &&
-      env.S3_PUBLIC_BASE_URL,
+  return (
+    isS3DepositStorageConfigured() && Boolean(env.S3_PUBLIC_BASE_URL?.trim())
   );
 }
 

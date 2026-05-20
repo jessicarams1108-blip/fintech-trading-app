@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PendingDepositDto } from "@/types";
 import { apiFetch } from "@/lib/apiBase";
+import { parseApiError } from "@/lib/apiError";
 import { useAuth } from "@/state/AuthContext";
 
 type Props = {
@@ -13,6 +14,7 @@ export function AdminDepositReviewTable({ refreshToken = 0, onQueuesChanged }: P
   const { token } = useAuth();
   const [rows, setRows] = useState<PendingDepositDto[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [proofBusyId, setProofBusyId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -44,6 +46,27 @@ export function AdminDepositReviewTable({ refreshToken = 0, onQueuesChanged }: P
   }, [load, refreshToken]);
 
   const sorted = useMemo(() => [...rows].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)), [rows]);
+
+  async function openProof(depositId: string) {
+    if (!token) return;
+    setProofBusyId(depositId);
+    try {
+      const res = await apiFetch(`/api/admin/deposit/${depositId}/proof`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(parseApiError(body, "Could not load proof file", res.status));
+      }
+      const viewUrl = (body as { data?: { viewUrl?: string } }).data?.viewUrl;
+      if (!viewUrl) throw new Error("Invalid proof response from server");
+      window.open(viewUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not open proof");
+    } finally {
+      setProofBusyId(null);
+    }
+  }
 
   async function act(id: string, action: "confirm" | "reject") {
     if (!token) return;
@@ -139,9 +162,14 @@ export function AdminDepositReviewTable({ refreshToken = 0, onQueuesChanged }: P
                 <td className="px-4 py-3 font-mono text-xs break-all">{row.txHash}</td>
                 <td className="px-4 py-3">
                   {row.proofImageUrl ? (
-                    <a className="text-accent underline" href={row.proofImageUrl}>
-                      View
-                    </a>
+                    <button
+                      type="button"
+                      className="font-semibold text-oove-blue underline hover:brightness-110 disabled:opacity-50"
+                      disabled={proofBusyId === row.id}
+                      onClick={() => void openProof(row.id)}
+                    >
+                      {proofBusyId === row.id ? "Opening…" : "View proof"}
+                    </button>
                   ) : (
                     <span className="text-slate-400">None</span>
                   )}

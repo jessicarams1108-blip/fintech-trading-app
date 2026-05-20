@@ -157,8 +157,9 @@ export async function getDepositById(depositId: string) {
     credited_amount: string | null;
     status: PendingDepositDto["status"];
     tx_hash: string;
+    proof_image_url: string | null;
   }>(
-    `SELECT id, user_id, asset, credited_amount, status, tx_hash
+    `SELECT id, user_id, asset, credited_amount, status, tx_hash, proof_image_url
      FROM deposits
      WHERE id = $1::uuid`,
     [depositId],

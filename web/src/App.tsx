@@ -31,16 +31,17 @@ import { AiTradingMarketsPage } from "@/pages/ai-trading/AiTradingMarketsPage";
 import { AiTradingRunningPage } from "@/pages/ai-trading/AiTradingRunningPage";
 import { AiTradingInboxPage } from "@/pages/ai-trading/AiTradingInboxPage";
 import { AiTradingAgentPage } from "@/pages/ai-trading/AiTradingAgentPage";
+import { PublicLightTheme } from "@/components/PublicLightTheme";
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<OoveLandingPage />} />
-      <Route path="/onboarding" element={<OnboardingCarousel />} />
-      <Route path="/signup" element={<SignupWizard />} />
-      <Route path="/verify/request" element={<RequestVerificationCodePage />} />
-      <Route path="/verify" element={<VerifyEmailPage />} />
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<PublicLightTheme><OoveLandingPage /></PublicLightTheme>} />
+      <Route path="/onboarding" element={<PublicLightTheme><OnboardingCarousel /></PublicLightTheme>} />
+      <Route path="/signup" element={<PublicLightTheme><SignupWizard /></PublicLightTheme>} />
+      <Route path="/verify/request" element={<PublicLightTheme><RequestVerificationCodePage /></PublicLightTheme>} />
+      <Route path="/verify" element={<PublicLightTheme><VerifyEmailPage /></PublicLightTheme>} />
+      <Route path="/login" element={<PublicLightTheme><LoginPage /></PublicLightTheme>} />
 
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>

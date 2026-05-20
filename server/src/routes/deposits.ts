@@ -16,11 +16,11 @@ import { authenticateRequired, requireAdmin } from "../middleware/auth.js";
 import { MIN_DEPOSIT_USD, MAX_DEPOSIT_USD, assetAmountToUsd } from "../lib/assetUsd.js";
 import { findUserById } from "../db/queries/users.js";
 import { sendDepositConfirmedEmail } from "../lib/mail.js";
-import { env } from "../env.js";
 import {
   createDepositProofPresignedPut,
   isS3DepositUploadConfigured,
 } from "../lib/depositS3Presign.js";
+import { proofKeyBelongsToUser, resolveDepositProofViewUrl } from "../lib/depositProofView.js";
 import { zodFlattenToMessage } from "../lib/zodErrors.js";
 
 const btcHash = /^[a-fA-F0-9]{64}$/;
@@ -57,16 +57,6 @@ const presignSchema = z.object({
   contentType: z.string().min(1).max(120),
 });
 
-function proofKeyBelongsToUser(userId: string, key: string): boolean {
-  const normalizedKey = key.trim();
-  if (normalizedKey.length > 500) return false;
-  const match = /^deposits\/([^/]+)\/([^/]+)$/i.exec(normalizedKey);
-  if (!match || match[1]!.toLowerCase() !== userId.toLowerCase()) return false;
-  const rest = match[2]!;
-  if (!rest || rest.includes("..")) return false;
-  return /^[a-zA-Z0-9._-]+$/.test(rest);
-}
-
 function resolveProofImageUrl(userId: string, parsed: z.infer<typeof submitSchema>): string | null {
   const key = parsed.depositProofKey?.trim();
   const fn = parsed.screenshotFileName?.trim();
@@ -75,18 +65,11 @@ function resolveProofImageUrl(userId: string, parsed: z.infer<typeof submitSchem
     if (!proofKeyBelongsToUser(userId, key)) {
       throw new Error("Invalid deposit proof key");
     }
-    const base = env.S3_PUBLIC_BASE_URL?.trim();
-    if (base) {
-      return `${base.replace(/\/+$/, "")}/${key}`;
-    }
-    const bucket = env.S3_DEPOSIT_BUCKET?.trim();
-    if (bucket) {
-      return `s3://${bucket}/${key}`;
-    }
+    return `deposit-key:${key}`;
   }
 
   if (fn?.length) {
-    return `proof://${encodeURIComponent(fn)}`;
+    return `deposit-filename:${encodeURIComponent(fn)}`;
   }
 
   return null;
@@ -235,6 +218,26 @@ export function createAdminDepositRoutes(io: SocketIOServer) {
     try {
       const rows = await getPendingDeposits();
       res.json({ data: rows });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get("/deposit/:id/proof", async (req, res, next) => {
+    const depositId = String(req.params.id ?? "").trim();
+    if (!depositId) {
+      return res.status(400).json({ error: "Deposit id required" });
+    }
+    try {
+      const deposit = await getDepositById(depositId);
+      if (!deposit) {
+        return res.status(404).json({ error: "Deposit not found" });
+      }
+      const resolved = await resolveDepositProofViewUrl(deposit.proof_image_url, deposit.user_id);
+      if (!resolved.ok) {
+        return res.status(404).json({ error: resolved.error });
+      }
+      res.json({ data: { viewUrl: resolved.viewUrl } });
     } catch (err) {
       next(err);
     }
