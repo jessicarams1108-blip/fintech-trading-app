@@ -41,7 +41,11 @@ async function applySql(client: Pick<Pool, "query">, abs: string, label: string)
 
 async function applyIncrementalMigrations(client: Pick<Pool, "query">): Promise<void> {
   if (!fs.existsSync(migrationsDir)) return;
-  const incremental = ["018_deposit_proof_file.sql", "019_wallets_sol.sql"];
+  const incremental = [
+    "018_deposit_proof_file.sql",
+    "019_wallets_sol.sql",
+    "020_withdrawal_method_bank.sql",
+  ];
   for (const file of incremental) {
     const abs = path.join(migrationsDir, file);
     if (fs.existsSync(abs)) {

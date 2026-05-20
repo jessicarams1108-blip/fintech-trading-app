@@ -13,6 +13,25 @@ function mapPending(row) {
         status: row.status,
     };
 }
+const MAX_PROOF_BYTES = 4 * 1024 * 1024;
+/** Returns stored proof bytes when migration 018 has been applied. */
+export async function getDepositProofFile(depositId) {
+    try {
+        const { rows } = await pool.query(`SELECT proof_file, proof_mime FROM deposits WHERE id = $1::uuid`, [depositId]);
+        const row = rows[0];
+        if (!row?.proof_file || row.proof_file.length === 0)
+            return null;
+        return {
+            data: row.proof_file,
+            mime: row.proof_mime?.trim() || "application/octet-stream",
+        };
+    }
+    catch (err) {
+        if (isPgUndefinedColumn(err))
+            return null;
+        throw err;
+    }
+}
 /** Inserts deposit with status pending_review — duplicates TX hash prevented while not rejected. */
 export async function insertDeposit(input) {
     const dup = await pool.query(`SELECT 1 FROM deposits
@@ -22,32 +41,86 @@ export async function insertDeposit(input) {
     if (dup.rows.length > 0) {
         throw new Error("TX hash already submitted");
     }
-    const { rows } = await pool.query(`INSERT INTO deposits (user_id, asset, tx_hash, proof_image_url, declared_amount_usd, status)
-     VALUES ($1::uuid, $2::text, $3::text, $4::text, $5::numeric, 'pending_review')
-     RETURNING
-       deposits.id,
-       deposits.user_id,
-       (SELECT email FROM users WHERE users.id = deposits.user_id) AS email,
-       deposits.asset,
-       deposits.tx_hash,
-       deposits.proof_image_url,
-       deposits.declared_amount_usd::text AS declared_amount_usd,
-       deposits.created_at,
-       deposits.status,
-       deposits.credited_amount`, [input.userId, input.asset, input.txHash, input.proofImageUrl, input.declaredAmountUsd]);
-    const row = rows[0];
-    return mapPending({
-        id: row.id,
-        user_id: row.user_id,
-        user_email: row.email,
-        asset: row.asset,
-        tx_hash: row.tx_hash,
-        proof_image_url: row.proof_image_url,
-        declared_amount_usd: row.declared_amount_usd,
-        created_at: row.created_at,
-        status: row.status,
-        credited_amount: row.credited_amount,
-    });
+    const hasBlob = Boolean(input.proofFile && input.proofFile.length > 0);
+    if (hasBlob && input.proofFile.length > MAX_PROOF_BYTES) {
+        throw new Error("Proof file must be 4 MB or smaller.");
+    }
+    const runInsert = async (opts) => {
+        const cols = ["user_id", "asset", "tx_hash", "proof_image_url"];
+        const vals = ["$1::uuid", "$2::text", "$3::text", "$4::text"];
+        const params = [input.userId, input.asset, input.txHash, input.proofImageUrl];
+        let n = 4;
+        if (opts.includeDeclared) {
+            n += 1;
+            cols.push("declared_amount_usd");
+            vals.push(`$${n}::numeric`);
+            params.push(input.declaredAmountUsd);
+        }
+        if (opts.includeBlob && hasBlob) {
+            n += 1;
+            cols.push("proof_file");
+            vals.push(`$${n}::bytea`);
+            params.push(input.proofFile);
+            n += 1;
+            cols.push("proof_mime");
+            vals.push(`$${n}::text`);
+            params.push(input.proofMime ?? "application/octet-stream");
+        }
+        cols.push("status");
+        vals.push("'pending_review'");
+        const declaredSelect = opts.includeDeclared
+            ? "deposits.declared_amount_usd::text AS declared_amount_usd"
+            : "NULL::text AS declared_amount_usd";
+        const { rows } = await pool.query(`INSERT INTO deposits (${cols.join(", ")})
+       VALUES (${vals.join(", ")})
+       RETURNING
+         deposits.id,
+         deposits.user_id,
+         (SELECT email FROM users WHERE users.id = deposits.user_id) AS email,
+         deposits.asset,
+         deposits.tx_hash,
+         deposits.proof_image_url,
+         ${declaredSelect},
+         deposits.created_at,
+         deposits.status,
+         deposits.credited_amount`, params);
+        const row = rows[0];
+        return mapPending({
+            id: row.id,
+            user_id: row.user_id,
+            user_email: row.email,
+            asset: row.asset,
+            tx_hash: row.tx_hash,
+            proof_image_url: row.proof_image_url,
+            declared_amount_usd: row.declared_amount_usd,
+            created_at: row.created_at,
+            status: row.status,
+            credited_amount: row.credited_amount,
+        });
+    };
+    const attempts = hasBlob
+        ? [
+            { includeDeclared: true, includeBlob: true },
+            { includeDeclared: false, includeBlob: true },
+            { includeDeclared: true, includeBlob: false },
+            { includeDeclared: false, includeBlob: false },
+        ]
+        : [
+            { includeDeclared: true, includeBlob: false },
+            { includeDeclared: false, includeBlob: false },
+        ];
+    let lastErr;
+    for (const opts of attempts) {
+        try {
+            return await runInsert(opts);
+        }
+        catch (err) {
+            lastErr = err;
+            if (!isPgUndefinedColumn(err))
+                throw err;
+        }
+    }
+    throw lastErr;
 }
 /** Lists deposits awaiting ops review joined with owning user emails. */
 export async function getPendingDeposits() {
@@ -83,7 +156,7 @@ export async function getPendingDeposits() {
     }
 }
 export async function getDepositById(depositId) {
-    const { rows } = await pool.query(`SELECT id, user_id, asset, credited_amount, status, tx_hash
+    const { rows } = await pool.query(`SELECT id, user_id, asset, credited_amount, status, tx_hash, proof_image_url
      FROM deposits
      WHERE id = $1::uuid`, [depositId]);
     const row = rows[0];

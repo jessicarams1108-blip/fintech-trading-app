@@ -1,57 +1,78 @@
 import { randomBytes } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
-import { confirmDeposit, getDepositById, getPendingDeposits, insertDeposit, listUserDepositActivity, rejectDeposit, } from "../db/queries/deposits.js";
+import { confirmDeposit, getDepositById, getDepositProofFile, getPendingDeposits, insertDeposit, listUserDepositActivity, rejectDeposit, } from "../db/queries/deposits.js";
 import { WALLET_ADDRESSES, isDepositAssetKey } from "../config.js";
 import { authenticateRequired, requireAdmin } from "../middleware/auth.js";
 import { MIN_DEPOSIT_USD, MAX_DEPOSIT_USD, assetAmountToUsd } from "../lib/assetUsd.js";
 import { findUserById } from "../db/queries/users.js";
 import { sendDepositConfirmedEmail } from "../lib/mail.js";
-import { env } from "../env.js";
 import { createDepositProofPresignedPut, isS3DepositUploadConfigured, } from "../lib/depositS3Presign.js";
+import { proofKeyBelongsToUser, resolveDepositProofViewUrl } from "../lib/depositProofView.js";
+import { zodFlattenToMessage } from "../lib/zodErrors.js";
 const btcHash = /^[a-fA-F0-9]{64}$/;
 const evmTx = /^0x[a-fA-F0-9]{64}$/;
-const submitSchema = z.object({
+const submitSchema = z
+    .object({
     asset: z.enum(["BTC", "ETH", "USDT", "SOL"]),
     /** Optional; omitted or empty uses a server-generated placeholder (ops reconciles via proof). */
     txHash: z.string().max(120).optional(),
     screenshotFileName: z.string().max(260).nullable().optional(),
     /** Object key returned from POST /api/deposit/presign (must belong to the signed-in user). */
-    depositProofKey: z.string().min(30).max(500).optional(),
+    depositProofKey: z.string().min(10).max(500).optional(),
+    /** Base64-encoded proof image/PDF (stored in Postgres — no S3 required). */
+    proofFileBase64: z.string().min(16).max(6_000_000).optional(),
+    proofMime: z.string().min(3).max(120).optional(),
     declaredAmountUsd: z.coerce
         .number()
         .refine((n) => Number.isFinite(n) && n >= MIN_DEPOSIT_USD && n <= MAX_DEPOSIT_USD, {
         message: `Deposit amount must be between $${MIN_DEPOSIT_USD.toLocaleString()} and $${MAX_DEPOSIT_USD.toLocaleString()} USD.`,
     }),
+})
+    .superRefine((data, ctx) => {
+    const hasKey = Boolean(data.depositProofKey?.trim());
+    const hasBase64 = Boolean(data.proofFileBase64?.trim());
+    if (!hasKey && !hasBase64) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Upload a payment proof file before submitting.",
+            path: ["proofFileBase64"],
+        });
+    }
 });
+const MAX_PROOF_BYTES = 4 * 1024 * 1024;
+function parseProofBase64(base64, mimeRaw) {
+    let buffer;
+    try {
+        buffer = Buffer.from(base64, "base64");
+    }
+    catch {
+        throw new Error("Proof file data is invalid.");
+    }
+    if (buffer.length === 0 || buffer.length > MAX_PROOF_BYTES) {
+        throw new Error("Proof file must be between 1 byte and 4 MB.");
+    }
+    const mime = (mimeRaw ?? "application/octet-stream").toLowerCase().split(";")[0].trim();
+    if (!mime.startsWith("image/") && mime !== "application/pdf") {
+        throw new Error("Proof must be an image or PDF.");
+    }
+    return { buffer, mime };
+}
 const presignSchema = z.object({
     fileName: z.string().min(1).max(260),
     contentType: z.string().min(1).max(120),
 });
-function proofKeyBelongsToUser(userId, key) {
-    const prefix = `deposits/${userId}/`;
-    if (!key.startsWith(prefix) || key.length > 500)
-        return false;
-    const rest = key.slice(prefix.length);
-    if (!rest || rest.includes("/") || rest.includes(".."))
-        return false;
-    return /^[a-zA-Z0-9._-]+$/.test(rest);
-}
 function resolveProofImageUrl(userId, parsed) {
     const key = parsed.depositProofKey?.trim();
+    const fn = parsed.screenshotFileName?.trim();
     if (key) {
         if (!proofKeyBelongsToUser(userId, key)) {
             throw new Error("Invalid deposit proof key");
         }
-        const base = env.S3_PUBLIC_BASE_URL?.trim();
-        if (!base) {
-            throw new Error("Server is missing S3_PUBLIC_BASE_URL");
-        }
-        return `${base.replace(/\/+$/, "")}/${key}`;
+        return `deposit-key:${key}`;
     }
-    const fn = parsed.screenshotFileName?.trim();
     if (fn?.length) {
-        return `https://objects.example.invalid/${encodeURIComponent(fn)}`;
+        return `deposit-filename:${encodeURIComponent(fn)}`;
     }
     return null;
 }
@@ -81,15 +102,21 @@ const NETWORK_LABELS = {
     SOL: "Solana",
 };
 const depositNotice = {
-    BTC: "Only send BTC to this address. Wrong asset or network may be lost.",
-    ETH: "Only send ETH to this address (placeholder wallet — update in server config when ready).",
-    USDT: "Only send USDT to this address (placeholder wallet — update in server config when ready).",
-    SOL: "Only send SOL to this address (placeholder wallet — update in server config when ready).",
+    BTC: "Only send BTC to this Bitcoin address. Other assets sent here may be lost.",
+    ETH: "Only send ETH to this Ethereum address.",
+    USDT: "Only send USDT on Ethereum (ERC-20) to this address. Do not send other tokens.",
+    SOL: "Only send SOL to this Solana address.",
 };
 export function createPublicDepositRoutes() {
     const router = Router();
     router.get("/capabilities", (_req, res) => {
-        res.json({ data: { depositProofUploads: isS3DepositUploadConfigured() } });
+        res.json({
+            data: {
+                depositProofUploads: true,
+                depositProofViaApi: true,
+                depositProofViaS3: isS3DepositUploadConfigured(),
+            },
+        });
     });
     router.get("/config", (req, res) => {
         const raw = typeof req.query.asset === "string" ? req.query.asset.toUpperCase() : "";
@@ -126,7 +153,7 @@ export function createPublicDepositRoutes() {
         }
         const parsed = presignSchema.safeParse(req.body);
         if (!parsed.success) {
-            return res.status(422).json({ error: parsed.error.flatten() });
+            return res.status(422).json({ error: zodFlattenToMessage(parsed.error.flatten()) });
         }
         const ct = parsed.data.contentType.toLowerCase();
         if (!ct.startsWith("image/") && ct !== "application/pdf" && ct !== "application/octet-stream") {
@@ -147,20 +174,37 @@ export function createPublicDepositRoutes() {
     router.post("/submit", authenticateRequired, async (req, res) => {
         const parsed = submitSchema.safeParse(req.body);
         if (!parsed.success) {
-            return res.status(422).json({ error: parsed.error.flatten() });
+            return res.status(422).json({ error: zodFlattenToMessage(parsed.error.flatten()) });
         }
         try {
             const rawTx = (parsed.data.txHash ?? "").trim();
             const txHashClean = rawTx.length > 0
                 ? validateTxHash(parsed.data.asset, rawTx)
                 : generatedPendingTxHash(parsed.data.asset);
+            let proofFile = null;
+            let proofMime = null;
+            const b64 = parsed.data.proofFileBase64?.trim();
+            if (b64) {
+                try {
+                    const parsedProof = parseProofBase64(b64, parsed.data.proofMime);
+                    proofFile = parsedProof.buffer;
+                    proofMime = parsedProof.mime;
+                }
+                catch (e) {
+                    const msg = e instanceof Error ? e.message : "Invalid proof file";
+                    return res.status(400).json({ error: msg });
+                }
+            }
             let proof;
             try {
-                proof = resolveProofImageUrl(req.user.id, parsed.data);
+                proof = proofFile ? "deposit-db-stored" : resolveProofImageUrl(req.user.id, parsed.data);
             }
             catch (e) {
                 const msg = e instanceof Error ? e.message : "Invalid proof";
                 return res.status(400).json({ error: msg });
+            }
+            if (!proof) {
+                return res.status(400).json({ error: "Upload a payment proof file before submitting." });
             }
             const record = await insertDeposit({
                 userId: req.user.id,
@@ -168,6 +212,8 @@ export function createPublicDepositRoutes() {
                 txHash: txHashClean,
                 proofImageUrl: proof,
                 declaredAmountUsd: parsed.data.declaredAmountUsd,
+                proofFile,
+                proofMime,
             });
             res.status(201).json({ data: record });
         }
@@ -191,7 +237,38 @@ export function createAdminDepositRoutes(io) {
             next(err);
         }
     });
+    router.get("/deposit/:id/proof-file", async (req, res, next) => {
+        const depositId = String(req.params.id ?? "").trim();
+        if (!depositId) {
+            return res.status(400).json({ error: "Deposit id required" });
+        }
+        try {
+            const deposit = await getDepositById(depositId);
+            if (!deposit) {
+                return res.status(404).json({ error: "Deposit not found" });
+            }
+            const stored = await getDepositProofFile(depositId);
+            if (stored) {
+                res.setHeader("Content-Type", stored.mime);
+                res.setHeader("Cache-Control", "private, max-age=300");
+                res.send(stored.data);
+                return;
+            }
+            const resolved = await resolveDepositProofViewUrl(deposit.proof_image_url, deposit.user_id);
+            if (!resolved.ok) {
+                return res.status(404).json({ error: resolved.error });
+            }
+            res.redirect(302, resolved.viewUrl);
+        }
+        catch (err) {
+            next(err);
+        }
+    });
     router.post("/deposit/:id/confirm", async (req, res, next) => {
+        const depositId = String(req.params.id ?? "").trim();
+        if (!depositId) {
+            return res.status(400).json({ error: "Deposit id required" });
+        }
         const amountCandidate = req.body?.amount;
         const amountRaw = typeof amountCandidate === "number"
             ? amountCandidate.toString()
@@ -204,7 +281,7 @@ export function createAdminDepositRoutes(io) {
                 error: "Provide numeric credited amount via body.amount",
             });
         }
-        const depositRow = await getDepositById(req.params.id);
+        const depositRow = await getDepositById(depositId);
         if (!depositRow) {
             return res.status(404).json({ error: "Deposit not found" });
         }
@@ -219,12 +296,12 @@ export function createAdminDepositRoutes(io) {
         }
         try {
             await confirmDeposit({
-                depositId: req.params.id,
+                depositId,
                 creditedAmount: amountRaw,
                 adminUserId: req.user.id,
                 notes,
             });
-            const deposit = await getDepositById(req.params.id);
+            const deposit = await getDepositById(depositId);
             if (!deposit) {
                 return res.status(500).json({ error: "Confirmed deposit missing unexpectedly" });
             }
@@ -246,21 +323,30 @@ export function createAdminDepositRoutes(io) {
             res.json({ data: deposit });
         }
         catch (err) {
+            const message = err instanceof Error ? err.message : "Confirm failed";
+            if (/Deposit not pending|violates check constraint|wallets_currency/i.test(message)) {
+                return res.status(400).json({
+                    error: message.includes("check constraint")
+                        ? `Cannot credit ${depositRow.asset} — run npm run db:migrate -w server on Render (migration 019).`
+                        : message,
+                });
+            }
             next(err);
         }
     });
     router.post("/deposit/:id/reject", async (req, res, next) => {
+        const depositId = String(req.params.id ?? "").trim();
         const reason = String(req.body?.reason ?? "").trim();
         if (!reason) {
             return res.status(400).json({ error: "Rejection requires `reason`" });
         }
         try {
             await rejectDeposit({
-                depositId: req.params.id,
+                depositId,
                 reason,
                 adminUserId: req.user.id,
             });
-            const deposit = await getDepositById(req.params.id);
+            const deposit = await getDepositById(depositId);
             res.json({ data: deposit });
         }
         catch (err) {

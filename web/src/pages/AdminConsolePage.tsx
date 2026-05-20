@@ -11,8 +11,13 @@ type Queues = {
     user_email: string;
     asset: string;
     amount: string;
+    amount_usd: string | null;
     destination: string;
     status: string;
+    method: string;
+    bank_name: string | null;
+    bank_account_number: string | null;
+    bank_routing_number: string | null;
     created_at: string;
   }[];
   borrows: {
@@ -460,30 +465,61 @@ export function AdminConsolePage() {
               <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pending withdrawals</h2>
               <ul className="mt-2 max-h-64 space-y-2 overflow-y-auto text-xs">
                 {(q?.withdrawals ?? []).length === 0 ? <li className="text-slate-500">None.</li> : null}
-                {(q?.withdrawals ?? []).map((w) => (
-                  <li key={w.id} className="rounded-lg border border-slate-100 bg-slate-50 p-2">
-                    <div className="font-medium text-slate-800">{w.user_email}</div>
-                    <div className="mt-1 font-mono text-[11px] text-slate-600">
-                      {w.asset} {w.amount}
-                    </div>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        type="button"
-                        className="text-oove-blue hover:underline"
-                        onClick={() => void approveWithdrawal(w.id)}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        className="text-red-600 hover:underline"
-                        onClick={() => void rejectWithdrawal(w.id)}
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </li>
-                ))}
+                {(q?.withdrawals ?? []).map((w) => {
+                  const isWire = w.method === "wire";
+                  const usd = w.amount_usd != null ? Number.parseFloat(w.amount_usd) : null;
+                  return (
+                    <li key={w.id} className="rounded-lg border border-slate-100 bg-slate-50 p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-medium text-slate-800">{w.user_email}</div>
+                        <span
+                          className={
+                            isWire
+                              ? "rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-800"
+                              : "rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-700"
+                          }
+                        >
+                          {isWire ? "Wire" : "Crypto"}
+                        </span>
+                      </div>
+                      {isWire ? (
+                        <div className="mt-1 text-[11px] text-slate-700">
+                          <div className="font-mono">
+                            {usd != null
+                              ? `$${usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`
+                              : `${w.asset} ${w.amount}`}
+                          </div>
+                          <div className="mt-1 text-slate-600">
+                            <div>Bank: {w.bank_name ?? "—"}</div>
+                            <div>Account: {w.bank_account_number ?? "—"}</div>
+                            <div>Routing: {w.bank_routing_number ?? "—"}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-1 font-mono text-[11px] text-slate-600">
+                          {w.asset} {w.amount}
+                          <div className="break-all text-[10px] text-slate-500">→ {w.destination}</div>
+                        </div>
+                      )}
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          type="button"
+                          className="text-oove-blue hover:underline"
+                          onClick={() => void approveWithdrawal(w.id)}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="text-red-600 hover:underline"
+                          onClick={() => void rejectWithdrawal(w.id)}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
 

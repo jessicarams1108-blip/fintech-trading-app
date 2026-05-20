@@ -13,6 +13,7 @@ import { Server as SocketIOServer } from "socket.io";
 import jwt from "jsonwebtoken";
 import { env } from "./env.js";
 import { ensureDbReady } from "./db/ensureDbReady.js";
+import { runStartupBootstrap } from "./db/bootstrap.js";
 import { pgHost, pool } from "./db/index.js";
 import { createAdminDepositRoutes, createPublicDepositRoutes, } from "./routes/deposits.js";
 import { createAdminOpsRoutes } from "./routes/adminOps.js";
@@ -25,6 +26,7 @@ import { portfolioRouter } from "./routes/portfolio.js";
 import { transfersRouter } from "./routes/transfers.js";
 import { watchlistRouter } from "./routes/watchlist.js";
 import { historyRouter } from "./routes/history.js";
+import { notificationsRouter } from "./routes/notifications.js";
 import { identityRouter } from "./routes/identity.js";
 import { settingsRouter } from "./routes/settings.js";
 import { getUsdPrices } from "./lib/market.js";
@@ -32,6 +34,11 @@ import { marketRouter } from "./routes/market.js";
 import { fixedSavingsRouter } from "./routes/fixedSavings.js";
 import { walletRouter } from "./routes/wallet.js";
 import { createAdminFixedSavingsRoutes } from "./routes/adminFixedSavings.js";
+import { aiTradingRouter } from "./routes/aiTrading.js";
+import { createAdminAiTradingRoutes } from "./routes/adminAiTrading.js";
+import { supportRouter } from "./routes/support.js";
+import { createAdminSupportRoutes } from "./routes/adminSupport.js";
+import { startFixedSavingsCron } from "./jobs/fixedSavingsCron.js";
 /** Built Vite app (`npm run build -w web`), resolved from `server/dist/index.js`. */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = path.resolve(__dirname, "../../web/dist");
@@ -108,15 +115,20 @@ app.use("/api/portfolio", portfolioRouter);
 app.use("/api/transfers", transfersRouter);
 app.use("/api/watchlist", watchlistRouter);
 app.use("/api/history", historyRouter);
+app.use("/api/notifications", notificationsRouter);
 app.use("/api/identity", identityRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/fixed-plans", fixedSavingsRouter);
+app.use("/api/ai-trading", aiTradingRouter);
+app.use("/api/support", supportRouter);
 app.use("/api/wallet", walletRouter);
 app.use("/api/deposit", depositLimiter, createPublicDepositRoutes());
 app.use("/api/admin", createAdminDepositRoutes(io));
 app.use("/api/admin", createAdminOpsRoutes(io));
 app.use("/api/admin", createAdminIdentityRoutes());
 app.use("/api/admin", createAdminFixedSavingsRoutes());
+app.use("/api/admin", createAdminAiTradingRoutes());
+app.use("/api/admin", createAdminSupportRoutes());
 if (serveWeb) {
     app.use(express.static(WEB_DIST, { index: false }));
     app.use((req, res, next) => {
@@ -133,7 +145,7 @@ app.use((err, _req, res, _next) => {
     const clientSafe = /deposit not pending|missing unexpectedly/i.test(message) ||
         message === "Malformed transaction identifier for asset" ||
         /KYC columns are missing|Identity verification table is missing|User profile columns are missing|npm run db:(sql|migrate)/i.test(message) ||
-        /Insufficient wallet balance|Insufficient balance|Insufficient CashBox|Amount exceeds|Amount must be|Duration must be|Plan not found|Identity verification must be approved|Recipient not found|Borrow position not active|Invalid borrow position|Watchlist not available|Username not allowed|Username is taken|Current password incorrect/i.test(message);
+        /Insufficient wallet balance|Insufficient balance|Insufficient CashBox|Insufficient AI trading|Minimum (deposit|withdrawal|trade)|Weekly trade limit|already have a running trade|No USD price available|Amount exceeds|Amount must be|Duration must be|Plan not found|Identity verification must be approved|Not yet matured|Subscription not found|Recipient not found|Borrow position not active|Invalid borrow position|Watchlist not available|Username not allowed|Username is taken|Current password incorrect/i.test(message);
     if (clientSafe) {
         res.status(400).json({ error: message });
         return;
@@ -155,10 +167,12 @@ async function startServer() {
     await verifyPostgresWithRetry();
     try {
         await ensureDbReady();
+        await runStartupBootstrap();
     }
     catch (err) {
         console.error("[Startup] Database migration check failed:", err);
     }
+    startFixedSavingsCron();
     server.listen(listenPort, "0.0.0.0", () => {
         console.log(`[Startup] Listening on 0.0.0.0:${listenPort} (process.env.PORT=${listenPortRaw ?? "unset"} → using ${listenPort})`);
         console.log(serveWeb

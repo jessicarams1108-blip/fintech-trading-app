@@ -20,10 +20,33 @@ async function authFetch<T>(path: string, token: string, init?: RequestInit): Pr
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...(init?.headers as object) },
   });
-  const body = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new Error((body as { error?: string }).error ?? res.statusText);
+  const body = (await res.json().catch(() => ({}))) as T & { error?: unknown };
+  if (!res.ok) {
+    const err = (body as { error?: unknown }).error;
+    if (typeof err === "string" && err.length > 0) throw new Error(err);
+    if (err && typeof err === "object") {
+      const flat = err as { formErrors?: string[]; fieldErrors?: Record<string, string[] | undefined> };
+      const parts = [
+        ...(flat.formErrors ?? []),
+        ...Object.entries(flat.fieldErrors ?? {}).flatMap(([k, v]) => (v ?? []).map((x) => `${k}: ${x}`)),
+      ];
+      if (parts.length) throw new Error(parts.join(" · "));
+    }
+    throw new Error(res.statusText);
+  }
   return body as T;
 }
+
+type WithdrawalRow = {
+  id: string;
+  status: string;
+  amount: string;
+  asset: string;
+  amount_usd?: string | null;
+  method?: string | null;
+  bank_name?: string | null;
+  admin_notes?: string | null;
+};
 
 export function TransfersPage() {
   const { token } = useAuth();
@@ -32,13 +55,27 @@ export function TransfersPage() {
   const [tab, setTab] = useState<"deposit" | "withdraw" | "send" | "receive">("deposit");
   const [asset, setAsset] = useState("BTC");
   const [depAddr, setDepAddr] = useState<string | null>(null);
+
+  const [wdMethod, setWdMethod] = useState<"crypto" | "wire">("crypto");
   const [wdAmount, setWdAmount] = useState("");
   const [wdDest, setWdDest] = useState("");
+  const [wdBankName, setWdBankName] = useState("");
+  const [wdBankAccount, setWdBankAccount] = useState("");
+  const [wdBankRouting, setWdBankRouting] = useState("");
+
   const [sendEmail, setSendEmail] = useState("");
   const [sendAmt, setSendAmt] = useState("");
   const [sendAsset, setSendAsset] = useState("USDT");
 
   const [plannedDeposit, setPlannedDeposit] = useState("");
+
+  const cashBalance = useQuery({
+    queryKey: ["wallet", "balance", token],
+    enabled: !!token,
+    queryFn: () =>
+      authFetch<{ data: { cashBoxUsd: number } }>("/api/wallet/balance", token!).then((r) => r.data.cashBoxUsd),
+    refetchInterval: 30_000,
+  });
 
   const transferReq = useQuery({
     queryKey: ["transfers", "my-transfer-requests", token],
@@ -53,7 +90,7 @@ export function TransfersPage() {
   const hist = useQuery({
     queryKey: ["transfers", "history", token],
     enabled: !!token,
-    queryFn: () => authFetch<{ data: { withdrawals: unknown[] } }>("/api/transfers/history", token!),
+    queryFn: () => authFetch<{ data: { withdrawals: WithdrawalRow[] } }>("/api/transfers/history", token!),
   });
 
   async function loadDepositAddr() {
@@ -72,15 +109,45 @@ export function TransfersPage() {
   const wdMut = useMutation({
     mutationFn: async () => {
       if (!token) return;
+      const amt = Number(wdAmount);
+      if (!Number.isFinite(amt) || amt <= 0) throw new Error("Enter a USD amount greater than 0");
+      const available = cashBalance.data ?? 0;
+      if (wdMethod === "wire" && amt > available + 0.01) {
+        throw new Error(`Amount exceeds available cash balance ($${available.toLocaleString()})`);
+      }
+
+      const body: Record<string, unknown> = {
+        method: wdMethod,
+        amountUsd: amt,
+      };
+      if (wdMethod === "crypto") {
+        body.asset = asset;
+        body.destination = wdDest;
+      } else {
+        body.bankName = wdBankName;
+        body.bankAccountNumber = wdBankAccount;
+        body.bankRoutingNumber = wdBankRouting;
+      }
+
       await authFetch("/api/transfers/withdraw", token, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ asset, amountUsd: Number(wdAmount), destination: wdDest }),
+        body: JSON.stringify(body),
       });
     },
     onSuccess: () => {
-      showToast("Withdrawal queued for admin review");
+      showToast(
+        wdMethod === "wire"
+          ? "Wire transfer withdrawal submitted — admin will review and release funds."
+          : "Withdrawal queued for admin review",
+      );
+      setWdAmount("");
+      setWdDest("");
+      setWdBankName("");
+      setWdBankAccount("");
+      setWdBankRouting("");
       void qc.invalidateQueries({ queryKey: ["transfers", "history"] });
+      void qc.invalidateQueries({ queryKey: ["wallet", "balance"] });
     },
     onError: (e: Error) => showToast(e.message),
   });
@@ -102,11 +169,16 @@ export function TransfersPage() {
     onError: (e: Error) => showToast(e.message),
   });
 
+  const availableUsd = cashBalance.data ?? 0;
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="text-3xl font-semibold text-slate-900">Transfers</h1>
-        <p className="mt-2 text-slate-600">Deposit, withdraw, or send to another Oove user. Withdrawals and internal sends are released after administrator approval.</p>
+        <p className="mt-2 text-slate-600">
+          Deposit, withdraw to crypto or your bank, or send to another Oove user. Withdrawals and internal sends are
+          released after administrator approval.
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
@@ -144,7 +216,8 @@ export function TransfersPage() {
             ))}
           </select>
           <p className="text-sm text-slate-600">
-            For credited USD on-chain deposits, use <strong>Supply</strong> and declare the amount there (minimum applies). You can note how much you plan to send here for your own records.
+            For credited USD on-chain deposits, use <strong>Supply</strong> and declare the amount there (minimum
+            applies). You can note how much you plan to send here for your own records.
           </p>
           <label className="text-sm font-medium text-slate-700">Planned amount (optional, not submitted)</label>
           <input
@@ -153,7 +226,11 @@ export function TransfersPage() {
             value={plannedDeposit}
             onChange={(e) => setPlannedDeposit(e.target.value)}
           />
-          <button type="button" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" onClick={() => void loadDepositAddr()}>
+          <button
+            type="button"
+            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+            onClick={() => void loadDepositAddr()}
+          >
             Show treasury address
           </button>
           {depAddr ? (
@@ -175,28 +252,115 @@ export function TransfersPage() {
           }}
         >
           <h2 className="font-semibold text-slate-900">Request withdrawal</h2>
-          <label className="block text-sm font-medium text-slate-700">Asset to withdraw</label>
-          <select className="w-full rounded-xl border px-3 py-2" value={asset} onChange={(e) => setAsset(e.target.value)}>
-            {["BTC", "ETH", "USDT", "USDC", "DAI"].map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
+
+          <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm">
+            <p className="text-slate-500">Available cash balance</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
+              {formatUsdAmount(availableUsd)}
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            {(["crypto", "wire"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setWdMethod(m)}
+                className={
+                  wdMethod === m
+                    ? "flex-1 rounded-xl bg-oove-blue px-4 py-2 text-sm font-semibold text-white"
+                    : "flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                }
+              >
+                {m === "crypto" ? "Crypto address" : "Bank wire transfer"}
+              </button>
             ))}
-          </select>
-          <label className="block text-sm font-medium text-slate-700">Amount (USD)</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            className="w-full rounded-xl border px-3 py-2 tabular-nums"
-            placeholder="e.g. 500"
-            value={wdAmount}
-            onChange={(e) => setWdAmount(e.target.value)}
-          />
-          <input className="w-full rounded-xl border px-3 py-2" placeholder="Destination address" value={wdDest} onChange={(e) => setWdDest(e.target.value)} />
+          </div>
+
+          {wdMethod === "crypto" ? (
+            <>
+              <label className="block text-sm font-medium text-slate-700">Asset to withdraw</label>
+              <select
+                className="w-full rounded-xl border px-3 py-2"
+                value={asset}
+                onChange={(e) => setAsset(e.target.value)}
+              >
+                {["BTC", "ETH", "USDT", "USDC", "DAI"].map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+              <label className="block text-sm font-medium text-slate-700">Amount (USD)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="w-full rounded-xl border px-3 py-2 tabular-nums"
+                placeholder="e.g. 500"
+                value={wdAmount}
+                onChange={(e) => setWdAmount(e.target.value)}
+              />
+              <label className="block text-sm font-medium text-slate-700">Destination address</label>
+              <input
+                className="w-full rounded-xl border px-3 py-2"
+                placeholder="Crypto destination address"
+                value={wdDest}
+                onChange={(e) => setWdDest(e.target.value)}
+              />
+            </>
+          ) : (
+            <>
+              <label className="block text-sm font-medium text-slate-700">
+                Amount to withdraw (USD, from cash balance)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="w-full rounded-xl border px-3 py-2 tabular-nums"
+                placeholder="e.g. 500"
+                value={wdAmount}
+                onChange={(e) => setWdAmount(e.target.value)}
+              />
+              <p className="text-xs text-slate-500">
+                Cannot exceed cash balance. Funds are debited only after admin approval.
+              </p>
+              <label className="block text-sm font-medium text-slate-700">Bank name</label>
+              <input
+                className="w-full rounded-xl border px-3 py-2"
+                placeholder="e.g. Chase Bank"
+                value={wdBankName}
+                onChange={(e) => setWdBankName(e.target.value)}
+              />
+              <label className="block text-sm font-medium text-slate-700">Account number</label>
+              <input
+                className="w-full rounded-xl border px-3 py-2 tabular-nums"
+                placeholder="Bank account number"
+                value={wdBankAccount}
+                onChange={(e) => setWdBankAccount(e.target.value)}
+              />
+              <label className="block text-sm font-medium text-slate-700">Routing number</label>
+              <input
+                className="w-full rounded-xl border px-3 py-2 tabular-nums"
+                placeholder="ABA routing number (9 digits)"
+                value={wdBankRouting}
+                onChange={(e) => setWdBankRouting(e.target.value)}
+              />
+            </>
+          )}
+
           <p className="text-sm text-slate-500">Fee: $0 · ETA after approval: 1–24h</p>
-          <button type="submit" disabled={wdMut.isPending} className="w-full rounded-xl bg-oove-blue py-2 font-semibold text-white disabled:opacity-50">
-            {wdMut.isPending ? "Submitting…" : "Request withdrawal"}
+          <button
+            type="submit"
+            disabled={wdMut.isPending}
+            className="w-full rounded-xl bg-oove-blue py-2 font-semibold text-white disabled:opacity-50"
+          >
+            {wdMut.isPending
+              ? "Submitting…"
+              : wdMethod === "wire"
+                ? "Submit wire transfer withdrawal"
+                : "Request withdrawal"}
           </button>
         </form>
       )}
@@ -210,16 +374,34 @@ export function TransfersPage() {
           }}
         >
           <h2 className="font-semibold text-slate-900">Send to Oove user</h2>
-          <input className="w-full rounded-xl border px-3 py-2" placeholder="Recipient email" value={sendEmail} onChange={(e) => setSendEmail(e.target.value)} />
-          <select className="w-full rounded-xl border px-3 py-2" value={sendAsset} onChange={(e) => setSendAsset(e.target.value)}>
+          <input
+            className="w-full rounded-xl border px-3 py-2"
+            placeholder="Recipient email"
+            value={sendEmail}
+            onChange={(e) => setSendEmail(e.target.value)}
+          />
+          <select
+            className="w-full rounded-xl border px-3 py-2"
+            value={sendAsset}
+            onChange={(e) => setSendAsset(e.target.value)}
+          >
             {["USDT", "USDC", "DAI", "ETH", "BTC"].map((a) => (
               <option key={a} value={a}>
                 {a}
               </option>
             ))}
           </select>
-          <input className="w-full rounded-xl border px-3 py-2" placeholder="Amount" value={sendAmt} onChange={(e) => setSendAmt(e.target.value)} />
-          <button type="submit" disabled={sendMut.isPending} className="w-full rounded-xl bg-slate-900 py-2 font-semibold text-white disabled:opacity-50">
+          <input
+            className="w-full rounded-xl border px-3 py-2"
+            placeholder="Amount"
+            value={sendAmt}
+            onChange={(e) => setSendAmt(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={sendMut.isPending}
+            className="w-full rounded-xl bg-slate-900 py-2 font-semibold text-white disabled:opacity-50"
+          >
             {sendMut.isPending ? "Submitting…" : "Submit transfer request"}
           </button>
         </form>
@@ -228,14 +410,22 @@ export function TransfersPage() {
       {tab === "receive" && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
           <p className="text-slate-700">Generate a deposit address for an asset (same treasury routing as Deposit tab).</p>
-          <select className="w-full rounded-xl border px-3 py-2" value={asset} onChange={(e) => setAsset(e.target.value)}>
+          <select
+            className="w-full rounded-xl border px-3 py-2"
+            value={asset}
+            onChange={(e) => setAsset(e.target.value)}
+          >
             {["BTC", "ETH", "USDT"].map((a) => (
               <option key={a} value={a}>
                 {a}
               </option>
             ))}
           </select>
-          <button type="button" className="rounded-xl border px-4 py-2 text-sm font-semibold" onClick={() => void loadDepositAddr()}>
+          <button
+            type="button"
+            className="rounded-xl border px-4 py-2 text-sm font-semibold"
+            onClick={() => void loadDepositAddr()}
+          >
             Show address
           </button>
           {depAddr ? <p className="font-mono text-sm break-all">{depAddr}</p> : null}
@@ -261,16 +451,29 @@ export function TransfersPage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="font-semibold text-slate-900">Recent withdrawal requests</h2>
         <ul className="mt-3 space-y-2 text-sm text-slate-600">
-          {(
-            hist.data?.data.withdrawals as
-              | { id: string; status: string; amount: string; asset: string; amount_usd?: string | null }[]
-              | undefined
-          )?.map((w) => (
-            <li key={w.id}>
-              {w.asset} {formatUsdAmount(w.amount_usd)} —{" "}
-              <span className="font-medium">{formatTransferStatus(w.status)}</span>
-            </li>
-          )) ?? <li>No withdrawals yet.</li>}
+          {(hist.data?.data.withdrawals ?? []).length === 0 ? (
+            <li>No withdrawals yet.</li>
+          ) : (
+            (hist.data?.data.withdrawals ?? []).map((w) => (
+              <li key={w.id} className="rounded-lg border border-slate-100 px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    <span className="font-semibold">
+                      {w.method === "wire" ? "Wire transfer" : `${w.asset} crypto`}
+                    </span>{" "}
+                    — {formatUsdAmount(w.amount_usd)}
+                  </span>
+                  <span className="font-medium">{formatTransferStatus(w.status)}</span>
+                </div>
+                {w.method === "wire" && w.bank_name ? (
+                  <div className="mt-1 text-xs text-slate-500">To: {w.bank_name}</div>
+                ) : null}
+                {w.status === "rejected" && w.admin_notes ? (
+                  <div className="mt-1 text-xs text-red-600">Reason: {w.admin_notes}</div>
+                ) : null}
+              </li>
+            ))
+          )}
         </ul>
       </div>
     </div>

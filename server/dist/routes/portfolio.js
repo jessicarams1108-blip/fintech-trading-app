@@ -4,6 +4,7 @@ import { authenticateRequired } from "../middleware/auth.js";
 import { getUsdPrices } from "../lib/market.js";
 import { getUserWallets } from "../db/queries/liquidity.js";
 import { listHoldings, listSnapshots, portfolioTotalFromWallets, syncHoldingsFromWallets, upsertSnapshot, } from "../db/queries/portfolio.js";
+import { applyPortfolioYieldAccruals, PORTFOLIO_ACCRUAL_DAYS, PORTFOLIO_APY_ANNUAL, } from "../lib/portfolioYield.js";
 const limiter = rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false });
 export const portfolioRouter = Router();
 portfolioRouter.use(authenticateRequired);
@@ -12,7 +13,17 @@ portfolioRouter.get("/summary", limiter, async (req, res, next) => {
         const userId = req.user.id;
         const prices = await getUsdPrices();
         const wallets = await getUserWallets(userId);
-        const total = portfolioTotalFromWallets(wallets, prices);
+        let total = portfolioTotalFromWallets(wallets, prices);
+        try {
+            const yieldResult = await applyPortfolioYieldAccruals(userId, total);
+            if (yieldResult.creditedUsd > 0) {
+                const walletsAfter = await getUserWallets(userId);
+                total = portfolioTotalFromWallets(walletsAfter, prices);
+            }
+        }
+        catch (yieldErr) {
+            console.warn("[portfolio] yield accrual skipped:", yieldErr);
+        }
         await upsertSnapshot(userId, total);
         await syncHoldingsFromWallets(userId, prices);
         const snaps = await listSnapshots(userId, 14);
@@ -37,6 +48,9 @@ portfolioRouter.get("/summary", limiter, async (req, res, next) => {
                 totalValueUsd: total,
                 change24hPct,
                 allocation,
+                displayUnit: "USDT",
+                yieldApyPct: Math.round(PORTFOLIO_APY_ANNUAL * 10_000) / 100,
+                yieldAccrualDays: PORTFOLIO_ACCRUAL_DAYS,
             },
         });
     }

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getUsdPrices } from "../lib/market.js";
-import { getAssetMarketOverview, isAllowedOverviewSymbol, parseOverviewRange, } from "../lib/marketOverview.js";
+import { getAssetMarketOverview, isAllowedOverviewSymbol, parseOverviewRange, resolveSpotUsdPrice, } from "../lib/marketOverview.js";
+import { resolveEquityQuotes } from "../lib/equityQuotes.js";
 /** Popular symbols for home “top assets” strip — prices from CoinGecko when available, else static fallbacks. */
 const TOP_MARKET_SYMBOLS = ["BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "DOGE", "AVAX", "DOT", "MATIC"];
 export const marketRouter = Router();
@@ -32,6 +33,25 @@ marketRouter.get("/asset-overview", async (req, res, next) => {
         next(e);
     }
 });
+marketRouter.get("/equity-quotes", async (req, res, next) => {
+    const raw = typeof req.query.symbols === "string" ? req.query.symbols : "";
+    const symbols = raw
+        .split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean)
+        .slice(0, 40);
+    if (symbols.length === 0) {
+        res.status(400).json({ error: "symbols query required" });
+        return;
+    }
+    try {
+        const { rows, live } = await resolveEquityQuotes(symbols);
+        res.json({ data: rows, meta: { live } });
+    }
+    catch (e) {
+        next(e);
+    }
+});
 marketRouter.get("/price", async (req, res, next) => {
     const raw = typeof req.query.symbol === "string" ? req.query.symbol.trim().toUpperCase() : "";
     if (!raw) {
@@ -39,8 +59,11 @@ marketRouter.get("/price", async (req, res, next) => {
         return;
     }
     try {
-        const px = await getUsdPrices();
-        const priceUsd = px[raw];
+        let priceUsd = isAllowedOverviewSymbol(raw) ? await resolveSpotUsdPrice(raw) : 0;
+        if (!(priceUsd > 0)) {
+            const px = await getUsdPrices();
+            priceUsd = px[raw] ?? 0;
+        }
         if (typeof priceUsd !== "number" || !Number.isFinite(priceUsd) || priceUsd <= 0) {
             res.status(404).json({ error: `No USD price available for ${raw}` });
             return;

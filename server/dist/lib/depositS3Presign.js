@@ -1,12 +1,9 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../env.js";
+import { isS3DepositStorageConfigured } from "./depositProofView.js";
 export function isS3DepositUploadConfigured() {
-    return Boolean(env.S3_DEPOSIT_BUCKET &&
-        env.S3_REGION &&
-        env.S3_ACCESS_KEY_ID &&
-        env.S3_SECRET_ACCESS_KEY &&
-        env.S3_PUBLIC_BASE_URL);
+    return (isS3DepositStorageConfigured() && Boolean(env.S3_PUBLIC_BASE_URL?.trim()));
 }
 function safeFileSegment(name) {
     return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "proof";

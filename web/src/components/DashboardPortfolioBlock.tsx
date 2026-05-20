@@ -194,7 +194,7 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
           disabled={!token || submitMut.isPending}
           className="w-full rounded-xl bg-oove-blue py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-105 disabled:opacity-50"
         >
-          {submitMut.isPending ? "Submitting…" : "I have sent the money — submit proof"}
+          {submitMut.isPending ? "Submitting…" : "Payment Completed"}
         </button>
         <p className="text-xs text-slate-500">
           Full step-by-step flow:{" "}
