@@ -11,6 +11,7 @@ import { BalanceVisibilityEyeToggle } from "@/components/BalanceVisibilityEyeTog
 import { MarketOverviewPanel } from "@/components/MarketOverviewPanel";
 import { DepositUsdAmountPicker } from "@/components/DepositUsdAmountPicker";
 import { apiFetch } from "@/lib/apiBase";
+import { parseApiError } from "@/lib/apiError";
 import { marketSpotPriceQueryOptions } from "@/lib/marketSpotPrice";
 import { fetchFixedSavingsSummary } from "@/lib/fixedSavingsApi";
 import { usePreferences } from "@/state/PreferencesContext";
@@ -92,11 +93,9 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
         throw new Error(`Declare at least $${MIN_DEPOSIT_USD} USD equivalent.`);
       }
       let depositProofKey: string | undefined;
-      let screenshotFileName: string | undefined;
       if (proofFile) {
         const uploadedKey = await uploadDepositProofIfConfigured(token, proofFile);
         if (uploadedKey) depositProofKey = uploadedKey;
-        else screenshotFileName = proofFile.name;
       }
 
       const res = await apiFetch("/api/deposit/submit", {
@@ -108,11 +107,12 @@ export function HomeQuickDeposit({ token, onSubmitted }: HomeQuickDepositProps) 
         body: JSON.stringify({
           asset,
           declaredAmountUsd: declared,
-          ...(depositProofKey ? { depositProofKey } : screenshotFileName ? { screenshotFileName } : {}),
+          ...(depositProofKey ? { depositProofKey } : {}),
+          ...(proofFile ? { screenshotFileName: proofFile.name } : {}),
         }),
       });
       const body = (await res.json().catch(() => ({}))) as { data?: { id: string }; error?: string };
-      if (!res.ok) throw new Error(body.error ?? "Submit failed");
+      if (!res.ok) throw new Error(parseApiError(body, "Submit failed", res.status));
       return body.data?.id ?? "";
     },
     onSuccess: (id) => {

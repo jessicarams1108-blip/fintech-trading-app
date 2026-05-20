@@ -51,47 +51,66 @@ export async function insertDeposit(input: {
     throw new Error("TX hash already submitted");
   }
 
-  const { rows } = await pool.query<{
-    id: string;
-    user_id: string;
-    email: string;
-    asset: string;
-    tx_hash: string;
-    proof_image_url: string | null;
-    declared_amount_usd: string | null;
-    created_at: Date;
-    status: PendingDepositDto["status"];
-    credited_amount: string | null;
-  }>(
-    `INSERT INTO deposits (user_id, asset, tx_hash, proof_image_url, declared_amount_usd, status)
-     VALUES ($1::uuid, $2::text, $3::text, $4::text, $5::numeric, 'pending_review')
-     RETURNING
-       deposits.id,
-       deposits.user_id,
-       (SELECT email FROM users WHERE users.id = deposits.user_id) AS email,
-       deposits.asset,
-       deposits.tx_hash,
-       deposits.proof_image_url,
-       deposits.declared_amount_usd::text AS declared_amount_usd,
-       deposits.created_at,
-       deposits.status,
-       deposits.credited_amount`,
-    [input.userId, input.asset, input.txHash, input.proofImageUrl, input.declaredAmountUsd],
-  );
+  const run = async (includeDeclared: boolean) => {
+    const declaredSql = includeDeclared ? "$5::numeric" : "NULL::numeric";
+    const params = includeDeclared
+      ? [input.userId, input.asset, input.txHash, input.proofImageUrl, input.declaredAmountUsd]
+      : [input.userId, input.asset, input.txHash, input.proofImageUrl];
+    const declaredSelect = includeDeclared
+      ? "deposits.declared_amount_usd::text AS declared_amount_usd"
+      : "NULL::text AS declared_amount_usd";
 
-  const row = rows[0]!;
-  return mapPending({
-    id: row.id,
-    user_id: row.user_id,
-    user_email: row.email,
-    asset: row.asset,
-    tx_hash: row.tx_hash,
-    proof_image_url: row.proof_image_url,
-    declared_amount_usd: row.declared_amount_usd,
-    created_at: row.created_at,
-    status: row.status,
-    credited_amount: row.credited_amount,
-  });
+    const { rows } = await pool.query<{
+      id: string;
+      user_id: string;
+      email: string;
+      asset: string;
+      tx_hash: string;
+      proof_image_url: string | null;
+      declared_amount_usd: string | null;
+      created_at: Date;
+      status: PendingDepositDto["status"];
+      credited_amount: string | null;
+    }>(
+      `INSERT INTO deposits (user_id, asset, tx_hash, proof_image_url, declared_amount_usd, status)
+       VALUES ($1::uuid, $2::text, $3::text, $4::text, ${declaredSql}, 'pending_review')
+       RETURNING
+         deposits.id,
+         deposits.user_id,
+         (SELECT email FROM users WHERE users.id = deposits.user_id) AS email,
+         deposits.asset,
+         deposits.tx_hash,
+         deposits.proof_image_url,
+         ${declaredSelect},
+         deposits.created_at,
+         deposits.status,
+         deposits.credited_amount`,
+      params,
+    );
+
+    const row = rows[0]!;
+    return mapPending({
+      id: row.id,
+      user_id: row.user_id,
+      user_email: row.email,
+      asset: row.asset,
+      tx_hash: row.tx_hash,
+      proof_image_url: row.proof_image_url,
+      declared_amount_usd: row.declared_amount_usd,
+      created_at: row.created_at,
+      status: row.status,
+      credited_amount: row.credited_amount,
+    });
+  };
+
+  try {
+    return await run(true);
+  } catch (err) {
+    if (isPgUndefinedColumn(err)) {
+      return run(false);
+    }
+    throw err;
+  }
 }
 
 /** Lists deposits awaiting ops review joined with owning user emails. */

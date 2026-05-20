@@ -21,23 +21,36 @@ import {
   createDepositProofPresignedPut,
   isS3DepositUploadConfigured,
 } from "../lib/depositS3Presign.js";
+import { zodFlattenToMessage } from "../lib/zodErrors.js";
 
 const btcHash = /^[a-fA-F0-9]{64}$/;
 const evmTx = /^0x[a-fA-F0-9]{64}$/;
 
-const submitSchema = z.object({
-  asset: z.enum(["BTC", "ETH", "USDT", "SOL"]),
-  /** Optional; omitted or empty uses a server-generated placeholder (ops reconciles via proof). */
-  txHash: z.string().max(120).optional(),
-  screenshotFileName: z.string().max(260).nullable().optional(),
-  /** Object key returned from POST /api/deposit/presign (must belong to the signed-in user). */
-  depositProofKey: z.string().min(30).max(500).optional(),
-  declaredAmountUsd: z.coerce
-    .number()
-    .refine((n) => Number.isFinite(n) && n >= MIN_DEPOSIT_USD && n <= MAX_DEPOSIT_USD, {
-      message: `Deposit amount must be between $${MIN_DEPOSIT_USD.toLocaleString()} and $${MAX_DEPOSIT_USD.toLocaleString()} USD.`,
-    }),
-});
+const submitSchema = z
+  .object({
+    asset: z.enum(["BTC", "ETH", "USDT", "SOL"]),
+    /** Optional; omitted or empty uses a server-generated placeholder (ops reconciles via proof). */
+    txHash: z.string().max(120).optional(),
+    screenshotFileName: z.string().max(260).nullable().optional(),
+    /** Object key returned from POST /api/deposit/presign (must belong to the signed-in user). */
+    depositProofKey: z.string().min(10).max(500).optional(),
+    declaredAmountUsd: z.coerce
+      .number()
+      .refine((n) => Number.isFinite(n) && n >= MIN_DEPOSIT_USD && n <= MAX_DEPOSIT_USD, {
+        message: `Deposit amount must be between $${MIN_DEPOSIT_USD.toLocaleString()} and $${MAX_DEPOSIT_USD.toLocaleString()} USD.`,
+      }),
+  })
+  .superRefine((data, ctx) => {
+    const hasKey = Boolean(data.depositProofKey?.trim());
+    const hasFile = Boolean(data.screenshotFileName?.trim());
+    if (!hasKey && !hasFile) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Upload a payment proof file before submitting.",
+        path: ["screenshotFileName"],
+      });
+    }
+  });
 
 const presignSchema = z.object({
   fileName: z.string().min(1).max(260),
@@ -45,29 +58,37 @@ const presignSchema = z.object({
 });
 
 function proofKeyBelongsToUser(userId: string, key: string): boolean {
-  const prefix = `deposits/${userId}/`;
-  if (!key.startsWith(prefix) || key.length > 500) return false;
-  const rest = key.slice(prefix.length);
-  if (!rest || rest.includes("/") || rest.includes("..")) return false;
+  const normalizedKey = key.trim();
+  if (normalizedKey.length > 500) return false;
+  const match = /^deposits\/([^/]+)\/([^/]+)$/i.exec(normalizedKey);
+  if (!match || match[1]!.toLowerCase() !== userId.toLowerCase()) return false;
+  const rest = match[2]!;
+  if (!rest || rest.includes("..")) return false;
   return /^[a-zA-Z0-9._-]+$/.test(rest);
 }
 
 function resolveProofImageUrl(userId: string, parsed: z.infer<typeof submitSchema>): string | null {
   const key = parsed.depositProofKey?.trim();
+  const fn = parsed.screenshotFileName?.trim();
+
   if (key) {
     if (!proofKeyBelongsToUser(userId, key)) {
       throw new Error("Invalid deposit proof key");
     }
     const base = env.S3_PUBLIC_BASE_URL?.trim();
-    if (!base) {
-      throw new Error("Server is missing S3_PUBLIC_BASE_URL");
+    if (base) {
+      return `${base.replace(/\/+$/, "")}/${key}`;
     }
-    return `${base.replace(/\/+$/, "")}/${key}`;
+    const bucket = env.S3_DEPOSIT_BUCKET?.trim();
+    if (bucket) {
+      return `s3://${bucket}/${key}`;
+    }
   }
-  const fn = parsed.screenshotFileName?.trim();
+
   if (fn?.length) {
-    return `https://objects.example.invalid/${encodeURIComponent(fn)}`;
+    return `proof://${encodeURIComponent(fn)}`;
   }
+
   return null;
 }
 
@@ -146,7 +167,7 @@ export function createPublicDepositRoutes() {
     }
     const parsed = presignSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(422).json({ error: parsed.error.flatten() });
+      return res.status(422).json({ error: zodFlattenToMessage(parsed.error.flatten()) });
     }
     const ct = parsed.data.contentType.toLowerCase();
   if (!ct.startsWith("image/") && ct !== "application/pdf" && ct !== "application/octet-stream") {
@@ -167,7 +188,7 @@ export function createPublicDepositRoutes() {
   router.post("/submit", authenticateRequired, async (req, res) => {
     const parsed = submitSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(422).json({ error: parsed.error.flatten() });
+      return res.status(422).json({ error: zodFlattenToMessage(parsed.error.flatten()) });
     }
 
     try {
@@ -182,6 +203,9 @@ export function createPublicDepositRoutes() {
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Invalid proof";
         return res.status(400).json({ error: msg });
+      }
+      if (!proof) {
+        return res.status(400).json({ error: "Upload a payment proof file before submitting." });
       }
 
       const record = await insertDeposit({
