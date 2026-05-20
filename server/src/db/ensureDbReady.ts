@@ -39,9 +39,21 @@ async function applySql(client: Pick<Pool, "query">, abs: string, label: string)
   console.log(`[db:ready] Applied ${label}`);
 }
 
+async function applyIncrementalMigrations(client: Pick<Pool, "query">): Promise<void> {
+  if (!fs.existsSync(migrationsDir)) return;
+  const incremental = ["018_deposit_proof_file.sql", "019_wallets_sol.sql"];
+  for (const file of incremental) {
+    const abs = path.join(migrationsDir, file);
+    if (fs.existsSync(abs)) {
+      await applySql(client, abs, file);
+    }
+  }
+}
+
 export async function ensureDbReady(client: Pick<Pool, "query"> = pool): Promise<void> {
   const needs = await detectDbNeeds(client);
   if (needs === "none") {
+    await applyIncrementalMigrations(client);
     console.log("[db:ready] Database schema OK (identity + KYC)");
     return;
   }
