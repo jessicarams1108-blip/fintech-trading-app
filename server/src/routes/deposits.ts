@@ -298,6 +298,11 @@ export function createAdminDepositRoutes(io: SocketIOServer) {
   });
 
   router.post("/deposit/:id/confirm", async (req, res, next) => {
+    const depositId = String(req.params.id ?? "").trim();
+    if (!depositId) {
+      return res.status(400).json({ error: "Deposit id required" });
+    }
+
     const amountCandidate = req.body?.amount;
     const amountRaw =
       typeof amountCandidate === "number"
@@ -315,7 +320,7 @@ export function createAdminDepositRoutes(io: SocketIOServer) {
       });
     }
 
-    const depositRow = await getDepositById(req.params.id);
+    const depositRow = await getDepositById(depositId);
     if (!depositRow) {
       return res.status(404).json({ error: "Deposit not found" });
     }
@@ -331,13 +336,13 @@ export function createAdminDepositRoutes(io: SocketIOServer) {
 
     try {
       await confirmDeposit({
-        depositId: req.params.id,
+        depositId,
         creditedAmount: amountRaw,
         adminUserId: req.user!.id,
         notes,
       });
 
-      const deposit = await getDepositById(req.params.id);
+      const deposit = await getDepositById(depositId);
       if (!deposit) {
         return res.status(500).json({ error: "Confirmed deposit missing unexpectedly" });
       }
@@ -361,23 +366,32 @@ export function createAdminDepositRoutes(io: SocketIOServer) {
 
       res.json({ data: deposit });
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Confirm failed";
+      if (/Deposit not pending|violates check constraint|wallets_currency/i.test(message)) {
+        return res.status(400).json({
+          error: message.includes("check constraint")
+            ? `Cannot credit ${depositRow.asset} — run npm run db:migrate -w server on Render (migration 019).`
+            : message,
+        });
+      }
       next(err);
     }
   });
 
   router.post("/deposit/:id/reject", async (req, res, next) => {
+    const depositId = String(req.params.id ?? "").trim();
     const reason = String(req.body?.reason ?? "").trim();
     if (!reason) {
       return res.status(400).json({ error: "Rejection requires `reason`" });
     }
     try {
       await rejectDeposit({
-        depositId: req.params.id,
+        depositId,
         reason,
         adminUserId: req.user!.id,
       });
 
-      const deposit = await getDepositById(req.params.id);
+      const deposit = await getDepositById(depositId);
       res.json({ data: deposit });
     } catch (err) {
       next(err);

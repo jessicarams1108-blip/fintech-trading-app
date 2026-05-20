@@ -3,6 +3,8 @@ import type { PendingDepositDto } from "@/types";
 import { apiFetch } from "@/lib/apiBase";
 import { parseApiError } from "@/lib/apiError";
 import { useAuth } from "@/state/AuthContext";
+import { useToast } from "@/state/ToastContext";
+import { AdminDepositConfirmDialog } from "@/components/AdminDepositConfirmDialog";
 
 type Props = {
   refreshToken?: number;
@@ -12,10 +14,12 @@ type Props = {
 
 export function AdminDepositReviewTable({ refreshToken = 0, onQueuesChanged }: Props) {
   const { token } = useAuth();
+  const { showToast } = useToast();
   const [rows, setRows] = useState<PendingDepositDto[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [proofBusyId, setProofBusyId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [confirmRow, setConfirmRow] = useState<PendingDepositDto | null>(null);
 
   const load = useCallback(async () => {
     if (!token) {
@@ -64,51 +68,67 @@ export function AdminDepositReviewTable({ refreshToken = 0, onQueuesChanged }: P
       window.open(objectUrl, "_blank", "noopener,noreferrer");
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120_000);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Could not open proof");
+      showToast(err instanceof Error ? err.message : "Could not open proof");
     } finally {
       setProofBusyId(null);
     }
   }
 
-  async function act(id: string, action: "confirm" | "reject") {
-    if (!token) return;
+  async function submitConfirm(amount: string) {
+    if (!token || !confirmRow) return;
+    const id = confirmRow.id;
     setBusyId(id);
     try {
-      const endpoint =
-        action === "confirm"
-          ? `/api/admin/deposit/${id}/confirm`
-          : `/api/admin/deposit/${id}/reject`;
-
-      let body: Record<string, string>;
-      if (action === "confirm") {
-        const amount = window.prompt("Amount credited to the user ledger (decimals allowed)?")?.trim() ?? "";
-        if (!amount) throw new Error("Amount is required to confirm deposits");
-        body = { amount };
-      } else {
-        const reason =
-          window.prompt("Rejection reason (required)?", "Mismatch on-chain evidence")?.trim() ?? "";
-        if (!reason) throw new Error("Reason is required to reject deposits");
-        body = { reason };
-      }
-
-      const res = await apiFetch(endpoint, {
+      const res = await apiFetch(`/api/admin/deposit/${id}/confirm`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ amount }),
       });
-
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(payload?.error ?? "Action failed");
+        throw new Error(parseApiError(payload, "Confirm failed", res.status));
       }
-
+      setConfirmRow(null);
+      showToast(`Deposit confirmed — ${confirmRow.asset} credited and user notified by email.`);
       await load();
       onQueuesChanged?.();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Action failed");
+      showToast(err instanceof Error ? err.message : "Confirm failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function actReject(id: string) {
+    if (!token) return;
+    const reason =
+      window.prompt("Rejection reason (required)?", "Mismatch on-chain evidence")?.trim() ?? "";
+    if (!reason) {
+      showToast("Rejection reason is required.");
+      return;
+    }
+    setBusyId(id);
+    try {
+      const res = await apiFetch(`/api/admin/deposit/${id}/reject`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(parseApiError(payload, "Reject failed", res.status));
+      }
+      showToast("Deposit rejected.");
+      await load();
+      onQueuesChanged?.();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Reject failed");
     } finally {
       setBusyId(null);
     }
@@ -119,89 +139,99 @@ export function AdminDepositReviewTable({ refreshToken = 0, onQueuesChanged }: P
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-        <div>
-          <h2 className="text-lg font-semibold">Pending deposits</h2>
-          <p className="text-sm text-slate-500">
-            Server enforces admins via bearer tokens + middleware. Always verify explorers before approving.
-          </p>
-          {loadError ? <p className="mt-2 text-xs text-red-600">{loadError}</p> : null}
+    <>
+      <AdminDepositConfirmDialog
+        row={confirmRow}
+        busy={busyId === confirmRow?.id}
+        onClose={() => {
+          if (busyId !== confirmRow?.id) setConfirmRow(null);
+        }}
+        onConfirm={(amount) => void submitConfirm(amount)}
+      />
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+          <div>
+            <h2 className="text-lg font-semibold">Pending deposits</h2>
+            <p className="text-sm text-slate-500">
+              Confirm credits the user wallet and sends a deposit confirmation email.
+            </p>
+            {loadError ? <p className="mt-2 text-xs text-red-600">{loadError}</p> : null}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-4 py-3">User</th>
+                <th className="px-4 py-3">Asset</th>
+                <th className="px-4 py-3">Declared USD</th>
+                <th className="px-4 py-3">Credited</th>
+                <th className="px-4 py-3">Tx hash</th>
+                <th className="px-4 py-3">Proof</th>
+                <th className="px-4 py-3">Submitted</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan={8}>
+                    No queued deposits
+                  </td>
+                </tr>
+              ) : null}
+              {sorted.map((row) => (
+                <tr key={row.id} className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="px-4 py-3">{row.userEmail}</td>
+                  <td className="px-4 py-3 font-semibold">{row.asset}</td>
+                  <td className="px-4 py-3 tabular-nums">
+                    {row.declaredAmountUsd != null
+                      ? `$${Number.parseFloat(row.declaredAmountUsd).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-3">{row.amount ?? "— pending verify"}</td>
+                  <td className="px-4 py-3 font-mono text-xs break-all">{row.txHash}</td>
+                  <td className="px-4 py-3">
+                    {row.proofImageUrl ? (
+                      <button
+                        type="button"
+                        className="font-semibold text-oove-blue underline hover:brightness-110 disabled:opacity-50"
+                        disabled={proofBusyId === row.id}
+                        onClick={() => void openProof(row.id)}
+                      >
+                        {proofBusyId === row.id ? "Opening…" : "View proof"}
+                      </button>
+                    ) : (
+                      <span className="text-slate-400">None</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">{new Date(row.createdAt).toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                        disabled={busyId === row.id}
+                        onClick={() => setConfirmRow(row)}
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-500 dark:text-red-200 dark:hover:bg-red-500/15"
+                        disabled={busyId === row.id}
+                        onClick={() => void actReject(row.id)}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-3">User</th>
-              <th className="px-4 py-3">Asset</th>
-              <th className="px-4 py-3">Declared USD</th>
-              <th className="px-4 py-3">Credited</th>
-              <th className="px-4 py-3">Tx hash</th>
-              <th className="px-4 py-3">Proof</th>
-              <th className="px-4 py-3">Submitted</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.length === 0 ? (
-              <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={8}>
-                  No queued deposits 🎉
-                </td>
-              </tr>
-            ) : null}
-            {sorted.map((row) => (
-              <tr key={row.id} className="border-t border-slate-100 dark:border-slate-800">
-                <td className="px-4 py-3">{row.userEmail}</td>
-                <td className="px-4 py-3 font-semibold">{row.asset}</td>
-                <td className="px-4 py-3 tabular-nums">
-                  {row.declaredAmountUsd != null
-                    ? `$${Number.parseFloat(row.declaredAmountUsd).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
-                    : "—"}
-                </td>
-                <td className="px-4 py-3">{row.amount ?? "— pending verify"}</td>
-                <td className="px-4 py-3 font-mono text-xs break-all">{row.txHash}</td>
-                <td className="px-4 py-3">
-                  {row.proofImageUrl ? (
-                    <button
-                      type="button"
-                      className="font-semibold text-oove-blue underline hover:brightness-110 disabled:opacity-50"
-                      disabled={proofBusyId === row.id}
-                      onClick={() => void openProof(row.id)}
-                    >
-                      {proofBusyId === row.id ? "Opening…" : "View proof"}
-                    </button>
-                  ) : (
-                    <span className="text-slate-400">None</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">{new Date(row.createdAt).toLocaleString()}</td>
-                <td className="px-4 py-3">
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
-                      disabled={busyId === row.id}
-                      onClick={() => act(row.id, "confirm")}
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-500 dark:text-red-200 dark:hover:bg-red-500/15"
-                      disabled={busyId === row.id}
-                      onClick={() => act(row.id, "reject")}
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    </>
   );
 }

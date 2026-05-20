@@ -25,7 +25,7 @@ CREATE UNIQUE INDEX idx_users_username_lower ON users (LOWER(username));
 CREATE TABLE wallets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users (id),
-    currency TEXT NOT NULL CHECK (currency IN ('USD', 'BTC', 'ETH', 'USDT', 'USDC', 'DAI')),
+    currency TEXT NOT NULL CHECK (currency IN ('USD', 'BTC', 'ETH', 'USDT', 'USDC', 'DAI', 'SOL')),
     balance NUMERIC(36, 18) NOT NULL DEFAULT 0,
     UNIQUE (user_id, currency)
 );
