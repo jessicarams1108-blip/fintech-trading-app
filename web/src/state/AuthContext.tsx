@@ -90,17 +90,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       throw new Error(
         isLocalDev()
-          ? "Cannot reach the server. Start the backend (npm run dev:server) or use “Browse without signing in” on the login page."
-          : "Cannot reach the server. The API may be waking up — wait about a minute and try again.",
+          ? "Cannot reach the server. Start the backend (npm run dev:server) or use \"Browse without signing in\" on the login page."
+          : "Cannot reach the server. Check that VITE_API_URL points to the live API, then redeploy the frontend.",
       );
     }
     if (!res.ok) {
       const contentType = res.headers.get("content-type") ?? "";
       if (!contentType.includes("application/json")) {
+        const productionMessage =
+          res.status === 404
+            ? "Sign-in reached a missing API route (404). Set VITE_API_URL to the live backend URL or fix the /api rewrite, then redeploy."
+            : `Sign-in failed (${res.status}). Check that the API host is live and reachable.`;
         throw new Error(
           isLocalDev()
             ? "This site is not connected to the API. Start the backend (npm run dev:server) or set VITE_API_URL for production builds."
-            : `Sign-in failed (${res.status}). The API may be waking up — wait a minute and try again.`,
+            : productionMessage,
         );
       }
       const payload = (await res.json().catch(() => ({}))) as { error?: string };

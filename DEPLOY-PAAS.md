@@ -90,7 +90,7 @@ The repo includes **`render.yaml`** as a starting blueprint; you can still adjus
 
 | Issue | What to check |
 |--------|----------------|
-| Site loads but API / login fails | `APP_ORIGIN` must include the **exact** browser URL (scheme + host, no path). |
+| Site loads but API / login fails | Frontend `VITE_API_URL` must point to a live backend whose `/health` returns `{"ok":true}`; backend `APP_ORIGIN` must include the exact browser URL (scheme + host, no path). |
 | Build fails | Logs should show Node version — use **Node 20+** (Render: set `NODE_VERSION` to `20` if needed). |
 | `Cannot reach Postgres` | `DATABASE_URL` wrong service / not linked / DB still provisioning. |
 

@@ -27,6 +27,6 @@ services:
         generateValue: true
       # Browser origins (Vercel frontend). Add your Render URL after first deploy if needed for testing.
       - key: APP_ORIGIN
-        value: https://www.theoove.com,https://theoove.com,https://theoove-app.onrender.com
+        value: https://www.theoove.com,https://theoove.com,https://fintech-trading-app.onrender.com
       - key: ADMIN_PRIMARY_EMAIL
         sync: false

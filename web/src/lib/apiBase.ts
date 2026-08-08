@@ -1,16 +1,10 @@
 /**
- * API routing for local dev (Vite proxy), Vercel production (same-origin proxy to Render),
- * and optional direct `VITE_API_URL` for other hosts.
+ * API routing for local dev (Vite proxy) and production builds.
  */
-export const PRODUCTION_API_HOST = "https://theoove-app.onrender.com";
-
+const DEFAULT_PRODUCTION_API_HOST = "https://fintech-trading-app.onrender.com";
 const envApiUrl = (import.meta.env.VITE_API_URL ?? "").trim().replace(/\/$/, "");
 
-function isTheooveProductionSite(): boolean {
-  if (typeof window === "undefined") return false;
-  const host = window.location.hostname.toLowerCase();
-  return host === "theoove.com" || host === "www.theoove.com";
-}
+export const PRODUCTION_API_HOST = envApiUrl || DEFAULT_PRODUCTION_API_HOST;
 
 /** True when running the Vite dev server (not a production build). */
 export function isLocalDev(): boolean {
@@ -18,12 +12,11 @@ export function isLocalDev(): boolean {
 }
 
 /**
- * REST API origin. Empty string = same-origin `/api/...` (Vite proxy locally,
- * Vercel → Render proxy on theoove.com).
+ * REST API origin. Empty string = same-origin `/api/...` through Vite locally.
  */
 function resolveApiOrigin(): string {
-  if (isTheooveProductionSite()) return "";
-  return envApiUrl;
+  if (envApiUrl) return envApiUrl;
+  return import.meta.env.PROD ? DEFAULT_PRODUCTION_API_HOST : "";
 }
 
 export const API_ORIGIN = resolveApiOrigin();
@@ -35,10 +28,10 @@ export function apiUrl(path: string): string {
   return origin ? `${origin}${p}` : p;
 }
 
-/** Socket.IO connect target — direct Render host in production; Vite proxy locally. */
+/** Socket.IO connect target: direct API host in production, same-origin in local dev. */
 export function socketOrigin(): string {
-  if (isTheooveProductionSite()) return PRODUCTION_API_HOST;
   if (envApiUrl) return envApiUrl;
+  if (import.meta.env.PROD) return DEFAULT_PRODUCTION_API_HOST;
   return typeof window !== "undefined" ? window.location.origin : "";
 }
 
