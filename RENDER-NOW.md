@@ -43,8 +43,9 @@ If **two** full Render tries fail, say **"Render failed twice"** in chat — we 
 
    Expected: `{"ok":true}`
 
-3. **Vercel** → Project → **Environment Variables**:
-   - `VITE_API_URL` = `https://theoove-app.onrender.com` (no trailing `/`)
+3. **Vercel** → Project → **Environment Variables** (optional):
+   - Leave `VITE_API_URL` **empty** — `vercel.json` proxies `/api/*` to Render automatically.
+   - Only set `VITE_API_URL` if you host the frontend somewhere other than Vercel/theoove.com.
 4. **Vercel** → **Deployments** → **Redeploy**.
 
 5. Test **https://www.theoove.com** — sign-in / dashboard.
@@ -88,7 +89,8 @@ If **two** full Render tries fail, say **"Render failed twice"** in chat — we 
 
 ## When Render works
 
-1. Vercel: `VITE_API_URL` → `https://theoove-app.onrender.com`
+1. Vercel redeploy from latest `main` (API proxy is in `vercel.json`).
+2. Confirm `https://theoove-app.onrender.com/health` returns `{"ok":true}`.
 2. You can **delete the Railway project** in railway.app (optional).
 3. Tell chat: **"Render is live"** — we can clean up docs if you want.
 

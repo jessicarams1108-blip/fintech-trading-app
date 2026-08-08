@@ -1,23 +1,48 @@
 /**
- * Production API origin when the SPA is on Vercel and the API runs elsewhere (Railway, Render, etc.).
- * Leave VITE_API_URL unset for local dev (Vite proxies /api to the backend).
+ * API routing for local dev (Vite proxy), Vercel production (same-origin proxy to Render),
+ * and optional direct `VITE_API_URL` for other hosts.
  */
-const raw = (import.meta.env.VITE_API_URL ?? "").trim().replace(/\/$/, "");
+export const PRODUCTION_API_HOST = "https://theoove-app.onrender.com";
 
-export const API_ORIGIN = raw;
+const envApiUrl = (import.meta.env.VITE_API_URL ?? "").trim().replace(/\/$/, "");
 
-/** Prefix `/api/...` with VITE_API_URL when set; otherwise same-origin relative path. */
+function isTheooveProductionSite(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname.toLowerCase();
+  return host === "theoove.com" || host === "www.theoove.com";
+}
+
+/** True when running the Vite dev server (not a production build). */
+export function isLocalDev(): boolean {
+  return import.meta.env.DEV;
+}
+
+/**
+ * REST API origin. Empty string = same-origin `/api/...` (Vite proxy locally,
+ * Vercel → Render proxy on theoove.com).
+ */
+function resolveApiOrigin(): string {
+  if (isTheooveProductionSite()) return "";
+  return envApiUrl;
+}
+
+export const API_ORIGIN = resolveApiOrigin();
+
+/** Prefix `/api/...` with the resolved API origin when set. */
 export function apiUrl(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  return API_ORIGIN ? `${API_ORIGIN}${p}` : p;
+  const origin = resolveApiOrigin();
+  return origin ? `${origin}${p}` : p;
 }
 
-/** Socket.IO connect target — API host when split, else current page origin. */
+/** Socket.IO connect target — direct Render host in production; Vite proxy locally. */
 export function socketOrigin(): string {
-  return API_ORIGIN || (typeof window !== "undefined" ? window.location.origin : "");
+  if (isTheooveProductionSite()) return PRODUCTION_API_HOST;
+  if (envApiUrl) return envApiUrl;
+  return typeof window !== "undefined" ? window.location.origin : "";
 }
 
-/** Same as `fetch`, but prefixes app-relative `/api/...` paths with `VITE_API_URL` when set. */
+/** Same as `fetch`, but prefixes app-relative `/api/...` paths with the resolved API origin. */
 export function apiFetch(input: string | URL, init?: RequestInit): Promise<Response> {
   if (typeof input === "string" && input.startsWith("/")) {
     return fetch(apiUrl(input), init);

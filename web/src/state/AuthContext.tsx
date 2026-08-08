@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { API_ORIGIN, apiFetch } from "@/lib/apiBase";
+import { apiFetch, isLocalDev } from "@/lib/apiBase";
 import { isAdminEmail } from "@/lib/adminAccess";
 import { profileFromAuthUser, saveRegisteredProfile } from "@/lib/registeredProfile";
 
@@ -89,16 +89,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } catch {
       throw new Error(
-        "Cannot reach the server. Start the backend (npm run dev:server) or use “Browse without signing in” on the login page.",
+        isLocalDev()
+          ? "Cannot reach the server. Start the backend (npm run dev:server) or use “Browse without signing in” on the login page."
+          : "Cannot reach the server. The API may be waking up — wait about a minute and try again.",
       );
     }
     if (!res.ok) {
       const contentType = res.headers.get("content-type") ?? "";
       if (!contentType.includes("application/json")) {
         throw new Error(
-          API_ORIGIN
-            ? `Sign-in failed (${res.status}). The API may be waking up — wait a minute and try again.`
-            : "This site is not connected to the API. In Vercel, set VITE_API_URL to https://fintech-trading-app.onrender.com and redeploy.",
+          isLocalDev()
+            ? "This site is not connected to the API. Start the backend (npm run dev:server) or set VITE_API_URL for production builds."
+            : `Sign-in failed (${res.status}). The API may be waking up — wait a minute and try again.`,
         );
       }
       const payload = (await res.json().catch(() => ({}))) as { error?: string };

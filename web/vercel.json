@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://theoove-app.onrender.com/api/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://theoove-app.onrender.com/health"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

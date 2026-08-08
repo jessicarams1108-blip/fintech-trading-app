@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { PendingDepositDto } from "@/types";
-import { apiFetch } from "@/lib/apiBase";
+import { apiFetch, isLocalDev } from "@/lib/apiBase";
 import { parseApiError } from "@/lib/apiError";
 import { useAuth } from "@/state/AuthContext";
 import { useToast } from "@/state/ToastContext";
@@ -34,7 +34,11 @@ export function AdminDepositReviewTable({ refreshToken = 0, onQueuesChanged }: P
       });
     } catch {
       setRows([]);
-      throw new Error("Cannot reach the server. Start the backend: npm run dev:server");
+      throw new Error(
+        isLocalDev()
+          ? "Cannot reach the server. Start the backend: npm run dev:server"
+          : "Cannot reach the server. The API may be waking up — wait a minute and try again.",
+      );
     }
     const payload = (await res.json().catch(() => ({}))) as { data?: PendingDepositDto[]; error?: string };
     if (!res.ok) {

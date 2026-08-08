@@ -2,10 +2,10 @@ import type { AssetSymbol } from "@/types";
 
 /** Per-asset deposit treasury wallets (must match server/src/config.ts). */
 export const DEPOSIT_WALLET_ADDRESSES: Record<AssetSymbol, string> = {
-  BTC: "bc1q7q9a3wq5u0ar6lmh2ejjpdq69qyl6zhsnd5vkn",
-  ETH: "0x28ef19b22c74de8557a20184cadb0ced916529fd",
-  USDT: "0x28ef19b22c74de8557a20184cadb0ced916529fd",
-  SOL: "8MjSm42WSq8rbXAPGUoNgUcKUhVK8UGF41hL4FtHCnAN",
+  BTC: "bc1qthdftsd5z6hkpnvq0wyuql5hhw3sv77x8vj5h6",
+  ETH: "0xEFb4a6BE5E174DD5Ba95faA7C0E58b255BE56b11",
+  USDT: "0xEFb4a6BE5E174DD5Ba95faA7C0E58b255BE56b11",
+  SOL: "13TDgV9cXrNtoQbZwri2AR3SRTU3ueboGRAY5aH3xUsn",
 };
 
 export function depositWalletAddress(asset: AssetSymbol): string {
