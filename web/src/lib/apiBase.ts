@@ -35,10 +35,13 @@ export function socketOrigin(): string {
   return typeof window !== "undefined" ? window.location.origin : "";
 }
 
-/** Same as `fetch`, but prefixes app-relative `/api/...` paths with the resolved API origin. */
+/** Same as `fetch`; production REST traffic uses the same-origin Vercel rewrite. */
 export function apiFetch(input: string | URL, init?: RequestInit): Promise<Response> {
   if (typeof input === "string" && input.startsWith("/")) {
-    return fetch(apiUrl(input), init);
+    // Production REST calls stay same-origin so Vercel's /api rewrite routes them
+    // to the live backend. This also prevents a stale VITE_API_URL from bypassing
+    // the deployed rewrite and sending sign-in to an obsolete API host.
+    return fetch(import.meta.env.PROD ? input : apiUrl(input), init);
   }
   return fetch(input, init);
 }
