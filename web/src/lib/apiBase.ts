@@ -1,7 +1,7 @@
 /**
  * API routing for local dev (Vite proxy) and production builds.
  */
-const DEFAULT_PRODUCTION_API_HOST = "https://fintech-trading-app.onrender.com";
+const DEFAULT_PRODUCTION_API_HOST = "https://fintech-trading-app-nor2.onrender.com";
 const envApiUrl = (import.meta.env.VITE_API_URL ?? "").trim().replace(/\/$/, "");
 
 export const PRODUCTION_API_HOST = envApiUrl || DEFAULT_PRODUCTION_API_HOST;

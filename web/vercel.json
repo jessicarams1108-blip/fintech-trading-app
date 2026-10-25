@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://fintech-trading-app.onrender.com/api/:path*"
+      "destination": "https://fintech-trading-app-nor2.onrender.com/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://fintech-trading-app.onrender.com/health"
+      "destination": "https://fintech-trading-app-nor2.onrender.com/health"
     },
     {
       "source": "/(.*)",

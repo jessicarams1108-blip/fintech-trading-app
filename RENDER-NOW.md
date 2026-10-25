@@ -38,13 +38,13 @@ If **two** full Render tries fail, say **"Render failed twice"** in chat. We wil
 2. Open in browser (your URL may differ slightly):
 
    ```text
-   https://fintech-trading-app.onrender.com/health
+   https://fintech-trading-app-nor2.onrender.com/health
    ```
 
    Expected: `{"ok":true}`
 
 3. **Vercel** -> Project -> **Environment Variables**:
-   - Set `VITE_API_URL` to your live Render backend URL, for example `https://fintech-trading-app.onrender.com`.
+   - Set `VITE_API_URL` to your live Render backend URL, for example `https://fintech-trading-app-nor2.onrender.com`.
    - Do not include a trailing slash.
 4. **Vercel** -> **Deployments** -> **Redeploy**.
 
@@ -89,7 +89,7 @@ If **two** full Render tries fail, say **"Render failed twice"** in chat. We wil
 
 ## When Render works
 
-1. Confirm `https://fintech-trading-app.onrender.com/health` returns `{"ok":true}`.
+1. Confirm `https://fintech-trading-app-nor2.onrender.com/health` returns `{"ok":true}`.
 2. Set Vercel `VITE_API_URL` to the working Render URL.
 3. Redeploy Vercel from latest `main`.
 4. You can **delete the Railway project** in railway.app (optional).
