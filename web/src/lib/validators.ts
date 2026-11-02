@@ -10,7 +10,6 @@ export function validateTxHash(asset: AssetSymbol, hash: string): { ok: true } |
   if (!trimmed) return { ok: false, error: "Transaction hash is required." };
   if (asset === "BTC" && BTC_HASH.test(trimmed)) return { ok: true };
   if (asset === "ETH" && ETH_TX.test(trimmed)) return { ok: true };
-  if (asset === "USDT" && (ETH_TX.test(trimmed) || TRON_USDT.test(trimmed)))
-    return { ok: true };
+  if (asset === "USDT" && TRON_USDT.test(trimmed)) return { ok: true };
   return { ok: false, error: "Hash format does not match the selected asset network." };
 }

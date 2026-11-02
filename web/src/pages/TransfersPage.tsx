@@ -412,7 +412,7 @@ export function TransfersPage() {
             value={asset}
             onChange={(e) => setAsset(e.target.value)}
           >
-            {["BTC", "ETH", "USDT"].map((a) => (
+            {["BTC", "ETH", "USDT", "SOL"].map((a) => (
               <option key={a} value={a}>
                 {a}
               </option>

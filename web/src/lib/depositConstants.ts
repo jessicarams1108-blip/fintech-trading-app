@@ -2,10 +2,10 @@ import type { AssetSymbol } from "@/types";
 
 /** Per-asset deposit treasury wallets (must match server/src/config.ts). */
 export const DEPOSIT_WALLET_ADDRESSES: Record<AssetSymbol, string> = {
-  BTC: "bc1qthdftsd5z6hkpnvq0wyuql5hhw3sv77x8vj5h6",
-  ETH: "0xEFb4a6BE5E174DD5Ba95faA7C0E58b255BE56b11",
-  USDT: "0xEFb4a6BE5E174DD5Ba95faA7C0E58b255BE56b11",
-  SOL: "13TDgV9cXrNtoQbZwri2AR3SRTU3ueboGRAY5aH3xUsn",
+  BTC: "bc1qassfs34ahccxgdx5ch4cswt7jvt25a529sxk58",
+  ETH: "0x395216b91CF96F1dFC5a6E0bdF28F54762D61891",
+  USDT: "TDmFXkmWyYkbYxW8HzRKTZLb7rxtsr5U3s",
+  SOL: "678v6aJqB1oo3bpdFdLFovKrDCQ2ejPKD9PFv1XtMRvd",
 };
 
 export function depositWalletAddress(asset: AssetSymbol): string {
@@ -21,7 +21,7 @@ export function depositQrPayload(asset: AssetSymbol, address: string): string {
     case "ETH":
       return trimmed.startsWith("ethereum:") ? trimmed : `ethereum:${trimmed}`;
     case "USDT":
-      return trimmed.startsWith("ethereum:") ? trimmed : `ethereum:${trimmed}`;
+      return trimmed;
     case "SOL":
       return trimmed.startsWith("solana:") ? trimmed : `solana:${trimmed}`;
     default:
@@ -42,7 +42,7 @@ export const BUY_CRYPTO_PLATFORMS = [
 
 export const DEPOSIT_NETWORK_LABEL: Record<AssetSymbol, string> = {
   BTC: "Bitcoin",
-  USDT: "Ethereum (ERC-20)",
+  USDT: "Tron (TRC-20)",
   ETH: "Ethereum",
   SOL: "Solana",
 };
@@ -50,7 +50,7 @@ export const DEPOSIT_NETWORK_LABEL: Record<AssetSymbol, string> = {
 export const DEPOSIT_WALLET_NOTE: Record<AssetSymbol, string> = {
   BTC: "Only send BTC to this Bitcoin address. Other assets sent here may be lost.",
   ETH: "Only send ETH to this Ethereum address.",
-  USDT: "Only send USDT on Ethereum (ERC-20) to this address. Do not send other tokens.",
+  USDT: "Only send USDT on Tron (TRC-20) to this address. Do not send other tokens or use another network.",
   SOL: "Only send SOL to this Solana address.",
 };
 

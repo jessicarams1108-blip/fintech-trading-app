@@ -101,7 +101,7 @@ function resolveProofImageUrl(userId: string, parsed: z.infer<typeof submitSchem
 function validateTxHash(asset: DepositAsset, hash: string) {
   const trimmed = hash.trim();
   if (asset === "BTC" && btcHash.test(trimmed)) return trimmed;
-  if ((asset === "ETH" || asset === "USDT" || asset === "SOL") && evmTx.test(trimmed)) return trimmed;
+  if ((asset === "ETH" || asset === "SOL") && evmTx.test(trimmed)) return trimmed;
   if (asset === "USDT" && /^[a-fA-F0-9]{64}$/.test(trimmed)) return trimmed;
   if (asset === "SOL" && /^[1-9A-HJ-NP-Za-km-z]{80,90}$/.test(trimmed)) return trimmed;
   throw new Error("Malformed transaction identifier for asset");
@@ -117,14 +117,14 @@ function generatedPendingTxHash(asset: DepositAsset): string {
 const NETWORK_LABELS: Record<DepositAssetKey, string> = {
   BTC: "Bitcoin",
   ETH: "Ethereum",
-  USDT: "Ethereum (ERC-20)",
+  USDT: "Tron (TRC-20)",
   SOL: "Solana",
 };
 
 const depositNotice: Record<DepositAssetKey, string> = {
   BTC: "Only send BTC to this Bitcoin address. Other assets sent here may be lost.",
   ETH: "Only send ETH to this Ethereum address.",
-  USDT: "Only send USDT on Ethereum (ERC-20) to this address. Do not send other tokens.",
+  USDT: "Only send USDT on Tron (TRC-20) to this address. Do not send other tokens or use another network.",
   SOL: "Only send SOL to this Solana address.",
 };
 

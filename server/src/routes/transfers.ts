@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { authenticateRequired } from "../middleware/auth.js";
-import { WALLET_ADDRESSES } from "../config.js";
+import { isDepositAssetKey, WALLET_ADDRESSES } from "../config.js";
 import { getUsdPrices } from "../lib/market.js";
 import { createWithdrawalRequest, listWithdrawals } from "../db/queries/transfers.js";
 import { insertTransferRequest, listTransferRequestsForUser } from "../db/queries/adminQueues.js";
@@ -17,17 +17,23 @@ transfersRouter.use(authenticateRequired);
 
 transfersRouter.get("/deposit/address", limiter, (req, res) => {
   const raw = String(req.query.asset ?? "BTC").toUpperCase();
-  if (!["BTC", "ETH", "USDT", "USDC", "DAI"].includes(raw)) {
+  if (!isDepositAssetKey(raw)) {
     res.status(400).json({ error: "Unsupported asset" });
     return;
   }
-  const address =
-    raw === "BTC" ? WALLET_ADDRESSES.BTC : raw === "ETH" ? WALLET_ADDRESSES.ETH : WALLET_ADDRESSES.USDT;
+  const network: Record<typeof raw, string> = {
+    BTC: "Bitcoin",
+    ETH: "Ethereum",
+    USDT: "Tron (TRC-20)",
+    SOL: "Solana",
+  };
+  const address = WALLET_ADDRESSES[raw];
   res.json({
     data: {
       asset: raw,
       address,
-      note: "Treasury routing preview. ERC-20 stables share the dev contract address in this build.",
+      network: network[raw],
+      note: `Only send ${raw} on ${network[raw]} to this address.`,
     },
   });
 });

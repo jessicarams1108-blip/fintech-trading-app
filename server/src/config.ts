@@ -1,10 +1,10 @@
 /** Server-side treasury addresses served to deposit UI. */
 
 export const WALLET_ADDRESSES = {
-  BTC: "bc1q7q9a3wq5u0ar6lmh2ejjpdq69qyl6zhsnd5vkn",
-  ETH: "0x28ef19b22c74de8557a20184cadb0ced916529fd",
-  USDT: "0x28ef19b22c74de8557a20184cadb0ced916529fd",
-  SOL: "8MjSm42WSq8rbXAPGUoNgUcKUhVK8UGF41hL4FtHCnAN",
+  BTC: "bc1qassfs34ahccxgdx5ch4cswt7jvt25a529sxk58",
+  ETH: "0x395216b91CF96F1dFC5a6E0bdF28F54762D61891",
+  USDT: "TDmFXkmWyYkbYxW8HzRKTZLb7rxtsr5U3s",
+  SOL: "678v6aJqB1oo3bpdFdLFovKrDCQ2ejPKD9PFv1XtMRvd",
 } as const;
 
 export type WalletAssetKey = keyof typeof WALLET_ADDRESSES;
